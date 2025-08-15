@@ -108,7 +108,7 @@ export async function GET(request: Request) {
     // Get game answers sorted by date
     const answers = await db.collection('gameanswers')
       .find(query)
-      .sort({ date: 1 })
+      .sort({ date: -1 })
       .limit(100)
       .toArray();
 
