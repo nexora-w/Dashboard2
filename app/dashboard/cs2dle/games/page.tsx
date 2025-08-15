@@ -82,7 +82,7 @@ const rewards = [
     title: "Weekly Prizes",
     description: "Set up weekly prizes for your users",
     image: "/images/cs2dle/rewards/weekly.webp",
-    href: "/dashboard/cs2dle/rewards/weekly",
+    href: "/dashboard/cs2dle/rewards/weekly-prize",
     status: "active",
     gradient: {
       primary: "#9C27B0",
