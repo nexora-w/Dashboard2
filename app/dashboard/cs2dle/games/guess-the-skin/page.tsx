@@ -55,6 +55,7 @@ const GuessTheSkin = () => {
   } | null>(null);
   const [editForm, setEditForm] = useState<Partial<Skin>>({});
   const [editDate, setEditDate] = useState<Date | undefined>(undefined);
+  const [isEditDatePickerOpen, setIsEditDatePickerOpen] = useState(false);
   const [editSearchQuery, setEditSearchQuery] = useState("");
   const [editSearchResults, setEditSearchResults] = useState<any[]>([]);
   const [isEditSearching, setIsEditSearching] = useState(false);
@@ -65,6 +66,7 @@ const GuessTheSkin = () => {
   // Create answer modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [isCreateDatePickerOpen, setIsCreateDatePickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -499,12 +501,14 @@ const GuessTheSkin = () => {
     return (
       <div className="mx-auto px-12">
         {/* Back button skeleton */}
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/dashboard/cs2dle/games" className="text-xl text-gray-600 hover:text-gray-400">
+        <div className="flex items-center gap-4">
+        <Link href="/dashboard/cs2dle/games">
+          <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Games
-          </Link>
-        </div>
+          </Button>
+        </Link>
+      </div>
         
         {/* Logo skeleton */}
         <div className="flex items-center justify-center gap-4 mb-8">
@@ -611,7 +615,7 @@ const GuessTheSkin = () => {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Label>Date *</Label>
-                  <Popover>
+                  <Popover open={isCreateDatePickerOpen} onOpenChange={setIsCreateDatePickerOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -630,7 +634,10 @@ const GuessTheSkin = () => {
                                                <Calendar
                           mode="single"
                           selected={selectedDate}
-                          onSelect={setSelectedDate}
+                          onSelect={(date) => {
+                            setSelectedDate(date);
+                            setIsCreateDatePickerOpen(false);
+                          }}
                           initialFocus
                           disabled={(date) => {
                             const amsterdamTimeZone = "Europe/Amsterdam";
@@ -676,7 +683,11 @@ const GuessTheSkin = () => {
                               ? "border-blue-500 bg-white/10"
                               : "border-gray-100/30 hover:border-gray-100/50"
                           }`}
-                          onClick={() => setSelectedSkinForCreate(skin)}
+                          onClick={() => {
+                            setSelectedSkinForCreate(skin);
+                            setSearchResults([]);
+                            setSearchQuery("");
+                          }}
                         >
                           <div className="flex items-center gap-3">
                             {skin.image && (
@@ -1070,7 +1081,7 @@ const GuessTheSkin = () => {
               {/* Date Selection */}
               <div className="space-y-2">
                 <Label>Date *</Label>
-                <Popover>
+                <Popover open={isEditDatePickerOpen} onOpenChange={setIsEditDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -1089,7 +1100,10 @@ const GuessTheSkin = () => {
                      <Calendar
                        mode="single"
                        selected={editDate}
-                       onSelect={setEditDate}
+                       onSelect={(date) => {
+                         setEditDate(date);
+                         setIsEditDatePickerOpen(false);
+                       }}
                        initialFocus
                        disabled={(date) => {
                          const amsterdamTimeZone = "Europe/Amsterdam";
@@ -1133,7 +1147,11 @@ const GuessTheSkin = () => {
                             ? "border-blue-500 bg-white/10"
                             : "border-gray-100/30 hover:border-gray-100/50"
                         }`}
-                        onClick={() => setSelectedSkinForEdit(skin)}
+                        onClick={() => {
+                          setSelectedSkinForEdit(skin);
+                          setEditSearchResults([]);
+                          setEditSearchQuery("");
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           {skin.image && (

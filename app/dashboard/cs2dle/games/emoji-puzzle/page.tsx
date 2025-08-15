@@ -29,16 +29,21 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Search, Loader2, PlusIcon, ArrowLeft } from "lucide-react";
+import {
+  CalendarIcon,
+  Search,
+  Loader2,
+  PlusIcon,
+  ArrowLeft,
+} from "lucide-react";
 import { format, isAfter, startOfDay } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GameAnswer, Skin } from "@/types/cs2dle/games/guess-skin";
+import { GameAnswer } from "@/types/cs2dle/games/emoji-puzzle";
+import { Skin } from "@/types/cs2dle/games/guess-skin";
 
-
-const GuessTheSkin = () => {
+const EmojiPuzzle = () => {
   const [answers, setAnswers] = useState<GameAnswer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +60,7 @@ const GuessTheSkin = () => {
   } | null>(null);
   const [editForm, setEditForm] = useState<Partial<Skin>>({});
   const [editDate, setEditDate] = useState<Date | undefined>(undefined);
+  const [isEditDatePickerOpen, setIsEditDatePickerOpen] = useState(false);
   const [editSearchQuery, setEditSearchQuery] = useState("");
   const [editSearchResults, setEditSearchResults] = useState<any[]>([]);
   const [isEditSearching, setIsEditSearching] = useState(false);
@@ -65,19 +71,38 @@ const GuessTheSkin = () => {
   // Create answer modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [isCreateDatePickerOpen, setIsCreateDatePickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedSkinForCreate, setSelectedSkinForCreate] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const router = useRouter();
+
+  // Emoji puzzle specific state
+  const [editEmojis, setEditEmojis] = useState<string[]>(["", "", "", "", ""]);
+  const [editHints, setEditHints] = useState<string[]>(["", "", "", "", ""]);
+  const [createEmojis, setCreateEmojis] = useState<string[]>([
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  const [createHints, setCreateHints] = useState<string[]>([
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  const [isGeneratingEmojis, setIsGeneratingEmojis] = useState(false);
 
   useEffect(() => {
     const fetchAnswers = async () => {
       try {
         setLoading(true);
         const response = await fetch(
-          "/api/cs2dle/games/answers?gameType=GuessSkin"
+          "/api/cs2dle/games/answers?gameType=EmojiPuzzle"
         );
 
         if (!response.ok) {
@@ -85,6 +110,8 @@ const GuessTheSkin = () => {
         }
 
         const data = await response.json();
+        console.log(data);
+
         setAnswers(data.answers || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
@@ -110,14 +137,14 @@ const GuessTheSkin = () => {
     const answerDate = toZonedTime(new Date(dateString), amsterdamTimeZone);
     const todayInAmsterdam = toZonedTime(new Date(), amsterdamTimeZone);
     const startOfToday = startOfDay(todayInAmsterdam);
-    
+
     return isAfter(answerDate, startOfToday);
   };
 
   // Helper function to check if a date already has an answer
   const isDateAlreadyTaken = (date: Date) => {
     const dateString = format(date, "yyyy-MM-dd");
-    return answers.some(answer => answer.date === dateString);
+    return answers.some((answer) => answer.date === dateString);
   };
 
   const handleEdit = (answer: GameAnswer, skin: Skin) => {
@@ -125,19 +152,20 @@ const GuessTheSkin = () => {
     if (!isDateEditable(answer.date)) {
       toast({
         title: "Cannot Edit",
-        description: "Answers from today and earlier cannot be edited. Only future dates are editable.",
+        description:
+          "Answers from today and earlier cannot be edited. Only future dates are editable.",
         variant: "destructive",
       });
       return;
     }
 
     const gameData =
-      answer.answers["GuessSkin"] || Object.values(answer.answers)[0];
+      answer.answers["EmojiPuzzle"] || Object.values(answer.answers)[0];
 
     const gameType =
       Object.keys(answer.answers).find(
         (key) => answer.answers[key]?.skinId === skin.id
-      ) || "GuessSkin";
+      ) || "EmojiPuzzle";
 
     setEditingSkin({
       answerId: answer._id!,
@@ -148,6 +176,14 @@ const GuessTheSkin = () => {
     setEditForm(skin);
     setEditDate(new Date(answer.date));
     setSelectedSkinForEdit(skin);
+
+    // Set emojis and hints for editing
+    if (gameData?.emojis) {
+      setEditEmojis([...gameData.emojis, "", "", "", "", ""].slice(0, 5));
+    }
+    if (gameData?.hints) {
+      setEditHints([...gameData.hints, "", "", "", "", ""].slice(0, 5));
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -155,6 +191,27 @@ const GuessTheSkin = () => {
       toast({
         title: "Error",
         description: "Please select both a date and a skin",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validEmojis = editEmojis.filter((emoji) => emoji.trim() !== "");
+    const validHints = editHints.filter((hint) => hint.trim() !== "");
+
+    if (validEmojis.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one emoji",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (validHints.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one hint",
         variant: "destructive",
       });
       return;
@@ -177,6 +234,8 @@ const GuessTheSkin = () => {
             answers: {
               [editingSkin.gameType]: {
                 skinId: selectedSkinForEdit.id,
+                emojis: validEmojis,
+                hints: validHints,
                 skin: {
                   id: selectedSkinForEdit.id,
                   name: selectedSkinForEdit.name,
@@ -218,7 +277,7 @@ const GuessTheSkin = () => {
 
       // Refresh the answers list
       const refreshResponse = await fetch(
-        "/api/cs2dle/games/answers?gameType=GuessSkin"
+        "/api/cs2dle/games/answers?gameType=EmojiPuzzle"
       );
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();
@@ -231,6 +290,8 @@ const GuessTheSkin = () => {
       setEditSearchQuery("");
       setEditSearchResults([]);
       setSelectedSkinForEdit(null);
+      setEditEmojis(["", "", "", "", ""]);
+      setEditHints(["", "", "", "", ""]);
 
       toast({
         title: "Success",
@@ -248,12 +309,17 @@ const GuessTheSkin = () => {
     }
   };
 
-  const handleDelete = async (answerId: string, skinName: string, answerDate: string) => {
+  const handleDelete = async (
+    answerId: string,
+    skinName: string,
+    answerDate: string
+  ) => {
     // Check if the date is deletable (future dates only)
     if (!isDateEditable(answerDate)) {
       toast({
         title: "Cannot Delete",
-        description: "Answers from today and earlier cannot be deleted. Only future dates are deletable.",
+        description:
+          "Answers from today and earlier cannot be deleted. Only future dates are deletable.",
         variant: "destructive",
       });
       return;
@@ -314,7 +380,7 @@ const GuessTheSkin = () => {
       } else {
         setIsSearching(true);
       }
-      
+
       const response = await fetch(
         `/api/cs2dle/games/skins/search?q=${encodeURIComponent(query)}&limit=10`
       );
@@ -371,6 +437,60 @@ const GuessTheSkin = () => {
     return () => clearTimeout(timeoutId);
   }, [editSearchQuery]);
 
+  // Generate emojis and hints using OpenAI
+  const generateEmojisAndHints = async (skin: any, isEditMode = false) => {
+    try {
+      setIsGeneratingEmojis(true);
+
+      const response = await fetch(
+        "/api/cs2dle/games/answers/generate-emojis/open-ai",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            skinName: skin.name,
+            skinDescription: skin.description || "",
+            weapon: skin.weapon?.name || skin.weapon || "",
+            image: skin.image || "",
+            rarity: skin.rarity?.name || "",
+            team: skin.team?.name || skin.team || "",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate emojis and hints");
+      }
+
+      const data = await response.json();
+
+      if (isEditMode) {
+        setEditEmojis([...data.emojis, "", "", "", "", ""].slice(0, 5));
+        setEditHints([...data.hints, "", "", "", "", ""].slice(0, 5));
+      } else {
+        setCreateEmojis([...data.emojis, "", "", "", "", ""].slice(0, 5));
+        setCreateHints([...data.hints, "", "", "", "", ""].slice(0, 5));
+      }
+
+      toast({
+        title: "Success",
+        description: "Emojis and hints generated successfully!",
+      });
+    } catch (error) {
+      console.error("Error generating emojis and hints:", error);
+      toast({
+        title: "Error",
+        description:
+          "Failed to generate emojis and hints. Please enter them manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingEmojis(false);
+    }
+  };
+
   // Create answer function
   const handleCreateAnswer = async () => {
     if (!selectedDate || !selectedSkinForCreate) {
@@ -382,16 +502,41 @@ const GuessTheSkin = () => {
       return;
     }
 
+    const validEmojis = createEmojis.filter((emoji) => emoji.trim() !== "");
+    const validHints = createHints.filter((hint) => hint.trim() !== "");
+
+    if (validEmojis.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one emoji",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (validHints.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one hint",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check if the selected date is in the future
     const amsterdamTimeZone = "Europe/Amsterdam";
-    const selectedDateInAmsterdam = toZonedTime(selectedDate, amsterdamTimeZone);
+    const selectedDateInAmsterdam = toZonedTime(
+      selectedDate,
+      amsterdamTimeZone
+    );
     const todayInAmsterdam = toZonedTime(new Date(), amsterdamTimeZone);
     const startOfToday = startOfDay(todayInAmsterdam);
 
     if (!isAfter(selectedDateInAmsterdam, startOfToday)) {
       toast({
         title: "Invalid Date",
-        description: "You can only create answers for future dates. Today and earlier dates are not allowed.",
+        description:
+          "You can only create answers for future dates. Today and earlier dates are not allowed.",
         variant: "destructive",
       });
       return;
@@ -401,7 +546,8 @@ const GuessTheSkin = () => {
     if (isDateAlreadyTaken(selectedDate)) {
       toast({
         title: "Date Already Taken",
-        description: "An answer already exists for this date. Please select a different date.",
+        description:
+          "An answer already exists for this date. Please select a different date.",
         variant: "destructive",
       });
       return;
@@ -421,8 +567,10 @@ const GuessTheSkin = () => {
           date: formattedDate,
           status: "active",
           answers: {
-            GuessSkin: {
+            EmojiPuzzle: {
               skinId: selectedSkinForCreate.id,
+              emojis: validEmojis,
+              hints: validHints,
               skin: {
                 id: selectedSkinForCreate.id,
                 name: selectedSkinForCreate.name,
@@ -463,7 +611,7 @@ const GuessTheSkin = () => {
 
       // Refresh the answers list
       const refreshResponse = await fetch(
-        "/api/cs2dle/games/answers?gameType=GuessSkin"
+        "/api/cs2dle/games/answers?gameType=EmojiPuzzle"
       );
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();
@@ -476,6 +624,8 @@ const GuessTheSkin = () => {
       setSearchResults([]);
       setSelectedSkinForCreate(null);
       setIsCreateModalOpen(false);
+      setCreateEmojis(["", "", "", "", ""]);
+      setCreateHints(["", "", "", "", ""]);
 
       toast({
         title: "Success",
@@ -499,22 +649,30 @@ const GuessTheSkin = () => {
     return (
       <div className="mx-auto px-12">
         {/* Back button skeleton */}
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/dashboard/cs2dle/games" className="text-xl text-gray-600 hover:text-gray-400">
+        <div className="flex items-center gap-4">
+        <Link href="/dashboard/cs2dle/games">
+          <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Games
-          </Link>
-        </div>
-        
+          </Button>
+        </Link>
+      </div>
+
         {/* Logo skeleton */}
         <div className="flex items-center justify-center gap-4 mb-8">
-          <Image src="/images/cs2dle/logo.png" alt="CS2DLE Logo" width={300} height={300} />
+          <Image
+            src="/images/cs2dle/logo.png"
+            alt="CS2DLE Logo"
+            width={300}
+            height={300}
+          />
         </div>
 
         {/* Description skeleton */}
         <div className="mb-8">
           <div>
-            Guess the skin game is a game where you have to guess the skin of the image. You can see the answers below.
+            Emoji Puzzle is a game where players guess the skin based on emojis
+            and hints. You can see the answers below.
           </div>
           <div className="flex items-center justify-between">
             <Skeleton className="h-10 w-40" />
@@ -541,7 +699,7 @@ const GuessTheSkin = () => {
                 <div className="relative aspect-[4/3] overflow-hidden flex items-center justify-center border">
                   <Skeleton className="w-full h-full" />
                 </div>
-                
+
                 {/* Action buttons skeleton */}
                 <div className="flex gap-2">
                   <Skeleton className="h-9 flex-1" />
@@ -569,7 +727,6 @@ const GuessTheSkin = () => {
 
   return (
     <div className="mx-auto px-12">
-      
       <div className="flex items-center gap-4">
         <Link href="/dashboard/cs2dle/games">
           <Button variant="ghost" size="sm">
@@ -588,30 +745,37 @@ const GuessTheSkin = () => {
       </div>
 
       <div>
-        Guess the skin game is a game where you have to guess the skin of the
-        image. You can see the answers below.
+        Emoji Puzzle is a game where players guess the skin based on emojis and
+        hints. You can see the answers below.
         <div className="my-4 flex items-center justify-between">
           <Modal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <ModalTrigger asChild>
-              <Button className="flex items-center justify-center" variant="outline">
+              <Button
+                className="flex items-center justify-center"
+                variant="outline"
+              >
                 <PlusIcon className="mr-2 h-4 w-4 " />
-                Create a answer
+                Create Emoji Puzzle Answer
               </Button>
             </ModalTrigger>
             <ModalContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <ModalHeader>
                 <ModalTitle className="text-2xl font-bold">
-                  Create New Answer
+                  Create New Emoji Puzzle Answer
                 </ModalTitle>
                 <ModalDescription className="text-sm text-gray-600">
-                  Select a date and skin for the new answer
+                  Select a date, skin, emojis, and hints for the new answer. You
+                  can use AI to automatically generate emojis and hints.
                 </ModalDescription>
               </ModalHeader>
 
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Label>Date *</Label>
-                  <Popover>
+                  <Popover
+                    open={isCreateDatePickerOpen}
+                    onOpenChange={setIsCreateDatePickerOpen}
+                  >
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -626,23 +790,35 @@ const GuessTheSkin = () => {
                           : "Pick a date"}
                       </Button>
                     </PopoverTrigger>
-                                         <PopoverContent className="w-auto p-0">
-                                               <Calendar
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={setSelectedDate}
-                          initialFocus
-                          disabled={(date) => {
-                            const amsterdamTimeZone = "Europe/Amsterdam";
-                            const dateInAmsterdam = toZonedTime(date, amsterdamTimeZone);
-                            const todayInAmsterdam = toZonedTime(new Date(), amsterdamTimeZone);
-                            const startOfToday = startOfDay(todayInAmsterdam);
-                            
-                            // Disable past dates and dates that already have answers
-                            return !isAfter(dateInAmsterdam, startOfToday) || isDateAlreadyTaken(date);
-                          }}
-                        />
-                     </PopoverContent>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          setSelectedDate(date);
+                          setIsCreateDatePickerOpen(false);
+                        }}
+                        initialFocus
+                        disabled={(date) => {
+                          const amsterdamTimeZone = "Europe/Amsterdam";
+                          const dateInAmsterdam = toZonedTime(
+                            date,
+                            amsterdamTimeZone
+                          );
+                          const todayInAmsterdam = toZonedTime(
+                            new Date(),
+                            amsterdamTimeZone
+                          );
+                          const startOfToday = startOfDay(todayInAmsterdam);
+
+                          // Disable past dates and dates that already have answers
+                          return (
+                            !isAfter(dateInAmsterdam, startOfToday) ||
+                            isDateAlreadyTaken(date)
+                          );
+                        }}
+                      />
+                    </PopoverContent>
                   </Popover>
                 </div>
 
@@ -676,7 +852,11 @@ const GuessTheSkin = () => {
                               ? "border-blue-500 bg-white/10"
                               : "border-gray-100/30 hover:border-gray-100/50"
                           }`}
-                          onClick={() => setSelectedSkinForCreate(skin)}
+                          onClick={() => {
+                            setSelectedSkinForCreate(skin);
+                            setSearchResults([]);
+                            setSearchQuery("");
+                          }}
                         >
                           <div className="flex items-center gap-3">
                             {skin.image && (
@@ -750,6 +930,69 @@ const GuessTheSkin = () => {
                   </div>
                 )}
 
+                {/* Emojis Input */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Emojis (up to 5)</Label>
+                    {selectedSkinForCreate && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          generateEmojisAndHints(selectedSkinForCreate, false)
+                        }
+                        disabled={isGeneratingEmojis}
+                        className="text-xs"
+                      >
+                        {isGeneratingEmojis ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          "Generate with AI"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
+                    {createEmojis.map((emoji, index) => (
+                      <Input
+                        key={index}
+                        placeholder="😀"
+                        value={emoji}
+                        onChange={(e) => {
+                          const newEmojis = [...createEmojis];
+                          newEmojis[index] = e.target.value;
+                          setCreateEmojis(newEmojis);
+                        }}
+                        className="text-center text-lg"
+                        maxLength={2}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hints Input */}
+                <div className="space-y-2">
+                  <Label>Hints (up to 5)</Label>
+                  <div className="space-y-2">
+                    {createHints.map((hint, index) => (
+                      <Input
+                        key={index}
+                        placeholder={`Hint ${index + 1}`}
+                        value={hint}
+                        onChange={(e) => {
+                          const newHints = [...createHints];
+                          newHints[index] = e.target.value;
+                          setCreateHints(newHints);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
                 {/* Action Buttons */}
                 <div className="flex justify-end space-x-2">
                   <Button
@@ -782,15 +1025,12 @@ const GuessTheSkin = () => {
       {answers.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground text-lg">
-            No answers found for Guess The Skin game.
+            No answers found for Emoji Puzzle game.
           </p>
         </div>
       ) : answers.filter((answer) => {
           const gameData =
-            answer.answers["GuessSkin"] ||
-            answer.answers["guess-the-skin"] ||
-            answer.answers["guessTheSkin"] ||
-            Object.values(answer.answers)[0];
+            answer.answers["EmojiPuzzle"] || Object.values(answer.answers)[0];
           return gameData?.skin;
         }).length === 0 ? (
         <div className="text-center py-12">
@@ -811,10 +1051,7 @@ const GuessTheSkin = () => {
           {answers.map((answer) => {
             // Try different possible key names
             const gameData =
-              answer.answers["GuessSkin"] ||
-              answer.answers["guess-the-skin"] ||
-              answer.answers["guessTheSkin"] ||
-              Object.values(answer.answers)[0];
+              answer.answers["EmojiPuzzle"] || Object.values(answer.answers)[0];
 
             if (!gameData?.skin) {
               console.log("No skin data found for answer:", answer);
@@ -828,28 +1065,27 @@ const GuessTheSkin = () => {
                 key={answer._id}
                 className="overflow-hidden rounded-none hover:shadow-lg transition-shadow duration-200"
               >
-                                 <CardHeader className="pb-3 border-b">
-                   <div className="flex items-start justify-between">
-                     <div className="flex-1">
-                       <div className="flex items-center gap-2 mb-1">
-                         <CardTitle className="text-lg font-bold text-white line-clamp-2">
-                           {skin.name}
-                         </CardTitle>
-                         {!isDateEditable(answer.date) && (
-                           <Badge variant="secondary" className="text-xs">
-                             Locked
-                           </Badge>
-                         )}
-                       </div>
-                       <CardDescription className="text-sm font-medium text-gray-600">
-                         {formatDate(answer.date)}
-                       </CardDescription>
-                     </div>
-                   </div>
-                 </CardHeader>
+                <CardHeader className="pb-3 border-b">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CardTitle className="text-lg font-bold text-white line-clamp-2">
+                          {skin.name}
+                        </CardTitle>
+                        {!isDateEditable(answer.date) && (
+                          <Badge variant="secondary" className="text-xs">
+                            Locked
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription className="text-sm font-medium text-gray-600">
+                        {formatDate(answer.date)}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
 
                 <CardContent className="p-4 space-y-4">
-                  {/* Skin Image */}
                   <div className="relative aspect-[4/3] overflow-hidden flex items-center justify-center border">
                     {skin.image ? (
                       <Image
@@ -873,7 +1109,19 @@ const GuessTheSkin = () => {
                     )}
                   </div>
 
-                  {/* Action Buttons */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <div className="text-xs text-gray-500">
+                            {gameData.emojis[index] || ""} -{" "}
+                            {gameData.hints[index] || ""}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="flex gap-2">
                     <Modal>
                       <ModalTrigger asChild>
@@ -1024,27 +1272,45 @@ const GuessTheSkin = () => {
                       </ModalContent>
                     </Modal>
 
-                                         <Button
-                       variant="outline"
-                       size="sm"
-                       className={`px-3 ${!isDateEditable(answer.date) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                       onClick={() => handleEdit(answer, skin)}
-                       disabled={!isDateEditable(answer.date)}
-                       title={!isDateEditable(answer.date) ? "Cannot edit answers from today or earlier" : "Edit this answer"}
-                     >
-                       Edit
-                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`px-3 ${
+                        !isDateEditable(answer.date)
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                      onClick={() => handleEdit(answer, skin)}
+                      disabled={!isDateEditable(answer.date)}
+                      title={
+                        !isDateEditable(answer.date)
+                          ? "Cannot edit answers from today or earlier"
+                          : "Edit this answer"
+                      }
+                    >
+                      Edit
+                    </Button>
 
-                     <Button
-                       variant="destructive"
-                       size="sm"
-                       className={`px-3 ${!isDateEditable(answer.date) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                       onClick={() => handleDelete(answer._id!, skin.name, answer.date)}
-                       disabled={isDeleting || !isDateEditable(answer.date)}
-                       title={!isDateEditable(answer.date) ? "Cannot delete answers from today or earlier" : "Delete this answer"}
-                     >
-                       {isDeleting ? "Deleting..." : "Delete"}
-                     </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className={`px-3 ${
+                        !isDateEditable(answer.date)
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        handleDelete(answer._id!, skin.name, answer.date)
+                      }
+                      disabled={isDeleting || !isDateEditable(answer.date)}
+                      title={
+                        !isDateEditable(answer.date)
+                          ? "Cannot delete answers from today or earlier"
+                          : "Delete this answer"
+                      }
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1059,10 +1325,11 @@ const GuessTheSkin = () => {
           <ModalContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <ModalHeader>
               <ModalTitle className="text-2xl font-bold">
-                Edit Answer: {editingSkin.skin.name}
+                Edit Emoji Puzzle Answer: {editingSkin.skin.name}
               </ModalTitle>
               <ModalDescription className="text-sm text-gray-600">
-                Update the date and skin for this answer
+                Update the date, skin, emojis, and hints for this answer. You
+                can use AI to automatically generate emojis and hints.
               </ModalDescription>
             </ModalHeader>
 
@@ -1070,7 +1337,10 @@ const GuessTheSkin = () => {
               {/* Date Selection */}
               <div className="space-y-2">
                 <Label>Date *</Label>
-                <Popover>
+                <Popover
+                  open={isEditDatePickerOpen}
+                  onOpenChange={setIsEditDatePickerOpen}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -1080,26 +1350,33 @@ const GuessTheSkin = () => {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {editDate
-                        ? format(editDate, "PPP")
-                        : "Pick a date"}
+                      {editDate ? format(editDate, "PPP") : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
-                                     <PopoverContent className="w-auto p-0">
-                     <Calendar
-                       mode="single"
-                       selected={editDate}
-                       onSelect={setEditDate}
-                       initialFocus
-                       disabled={(date) => {
-                         const amsterdamTimeZone = "Europe/Amsterdam";
-                         const dateInAmsterdam = toZonedTime(date, amsterdamTimeZone);
-                         const todayInAmsterdam = toZonedTime(new Date(), amsterdamTimeZone);
-                         const startOfToday = startOfDay(todayInAmsterdam);
-                         return !isAfter(dateInAmsterdam, startOfToday);
-                       }}
-                     />
-                   </PopoverContent>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={editDate}
+                      onSelect={(date) => {
+                        setEditDate(date);
+                        setIsEditDatePickerOpen(false);
+                      }}
+                      initialFocus
+                      disabled={(date) => {
+                        const amsterdamTimeZone = "Europe/Amsterdam";
+                        const dateInAmsterdam = toZonedTime(
+                          date,
+                          amsterdamTimeZone
+                        );
+                        const todayInAmsterdam = toZonedTime(
+                          new Date(),
+                          amsterdamTimeZone
+                        );
+                        const startOfToday = startOfDay(todayInAmsterdam);
+                        return !isAfter(dateInAmsterdam, startOfToday);
+                      }}
+                    />
+                  </PopoverContent>
                 </Popover>
               </div>
 
@@ -1133,7 +1410,11 @@ const GuessTheSkin = () => {
                             ? "border-blue-500 bg-white/10"
                             : "border-gray-100/30 hover:border-gray-100/50"
                         }`}
-                        onClick={() => setSelectedSkinForEdit(skin)}
+                        onClick={() => {
+                          setSelectedSkinForEdit(skin);
+                          setEditSearchResults([]);
+                          setEditSearchQuery("");
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           {skin.image && (
@@ -1207,6 +1488,69 @@ const GuessTheSkin = () => {
                 </div>
               )}
 
+              {/* Emojis Input */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Emojis (up to 5)</Label>
+                  {selectedSkinForEdit && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        generateEmojisAndHints(selectedSkinForEdit, true)
+                      }
+                      disabled={isGeneratingEmojis}
+                      className="text-xs"
+                    >
+                      {isGeneratingEmojis ? (
+                        <>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        "Generate with AI"
+                      )}
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {editEmojis.map((emoji, index) => (
+                    <Input
+                      key={index}
+                      placeholder="😀"
+                      value={emoji}
+                      onChange={(e) => {
+                        const newEmojis = [...editEmojis];
+                        newEmojis[index] = e.target.value;
+                        setEditEmojis(newEmojis);
+                      }}
+                      className="text-center text-lg"
+                      maxLength={2}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Hints Input */}
+              <div className="space-y-2">
+                <Label>Hints (up to 5)</Label>
+                <div className="space-y-2">
+                  {editHints.map((hint, index) => (
+                    <Input
+                      key={index}
+                      placeholder={`Hint ${index + 1}`}
+                      value={hint}
+                      onChange={(e) => {
+                        const newHints = [...editHints];
+                        newHints[index] = e.target.value;
+                        setEditHints(newHints);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
               {/* Action Buttons */}
               <div className="flex justify-end space-x-2">
                 <Button
@@ -1234,4 +1578,4 @@ const GuessTheSkin = () => {
   );
 };
 
-export default GuessTheSkin;
+export default EmojiPuzzle;

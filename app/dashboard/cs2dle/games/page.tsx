@@ -68,7 +68,7 @@ const rewards = [
     title: "Daily Case",
     description: "Set up daily cases for your users",
     image: "/images/cs2dle/rewards/case.webp",
-    href: "/dashboard/cs2dle/rewards/case",
+    href: "/dashboard/cs2dle/rewards/daily-case",
     status: "active",
     gradient: {
       primary: "#FF6B35",
