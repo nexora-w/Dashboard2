@@ -64,7 +64,9 @@ export async function POST(request: Request) {
                     For each emoji, provide a short hint that helps players understand the connection:
                     - Emoji 1-3, 5: Use **indirect** hints **without using any words from the skin name, description, or weapon name**. Use abstract ideas, metaphors, emotional tone, visual impressions, or color associations. Avoid literal terms or direct mentions.
                     - Emoji 4: Use the **exact rarity name** as specified in the mapping above (e.g., "Consumer Grade", "Industrial Grade", "Mil-Spec", etc.). This is the only emoji that should use direct, literal terms.
-
+                       
+                    
+                    IMPORTANT: Use ONLY universally supported emojis that display correctly on ALL operating systems (Windows, macOS, Linux, iOS, Android). Avoid newer or platform-specific emojis.
                     Return the response in this **exact JSON format**:
                     {
                       "emojis": ["🔥", "🐍", "✨", "🔴", "💥"],
