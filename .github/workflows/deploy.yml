@@ -22,12 +22,6 @@ jobs:
       uses: pnpm/action-setup@v2
       with:
         version: 8
-
-    - name: Install dependencies and build Dashboard2
-      run: |
-        cd app/dashboard
-        pnpm install
-        pnpm run build
     
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.0.3
