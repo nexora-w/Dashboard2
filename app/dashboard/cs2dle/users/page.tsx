@@ -248,7 +248,7 @@ const UsersPage = () => {
 
                     <CollapsibleContent>
                       <div className="px-4 pb-4 border-t bg-muted/30">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
                           {/* Basic Information */}
                           <div className="space-y-3">
                             <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
@@ -387,6 +387,48 @@ const UsersPage = () => {
                               <p>Current Streak: {user.currentStreak || 0}</p>
                               <p>Games Played: {user.gamesPlayed || 0}</p>
                               <p>Tickets: {user.ticket || 0}</p>
+                            </div>
+                          </div>
+
+                          {/* Trade & Crypto Information */}
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                              Trade & Crypto
+                            </h4>
+                            <div className="space-y-2">
+                              {user.tradeLink && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="font-medium">Trade Link:</span>
+                                  <a
+                                    href={user.tradeLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 underline break-all"
+                                  >
+                                    {user.tradeLink}
+                                  </a>
+                                </div>
+                              )}
+                              {user.cryptoAddresses && (
+                                <>
+                                  {user.cryptoAddresses.bitcoin && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <span className="font-medium">Bitcoin:</span>
+                                      <span className="text-xs text-muted-foreground break-all font-mono">
+                                        {user.cryptoAddresses.bitcoin}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {user.cryptoAddresses.ethereum && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <span className="font-medium">Ethereum:</span>
+                                      <span className="text-xs text-muted-foreground break-all font-mono">
+                                        {user.cryptoAddresses.ethereum}
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

@@ -19,6 +19,12 @@ export interface User {
   currentStreak?: number
   gamesPlayed?: number
   dailyCase?: DailyCase[]
+  // Additional fields
+  tradeLink?: string
+  cryptoAddresses?: {
+    bitcoin?: string
+    ethereum?: string
+  }
 }
 
 export interface DailyCase {
