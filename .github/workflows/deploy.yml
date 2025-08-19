@@ -1,59 +1,28 @@
-name: Deploy to VPS
+name: Deploy Dashboard2 to VPS
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 8
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'pnpm'
-    
-    - name: Install dependencies
-      run: pnpm install
-    
-    - name: Build application
-      run: pnpm run build
-
   deploy:
-    needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install pnpm
-      uses: pnpm/action-setup@v2
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
       with:
-        version: 8
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'pnpm'
-    
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-    
-    - name: Build application
-      run: pnpm run build
+        node-version: '20'
+
+    - name: Install dependencies and build Dashboard2
+      run: |
+        cd app/dashboard
+        pnpm install
+        pnpm run build
     
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.0.3
