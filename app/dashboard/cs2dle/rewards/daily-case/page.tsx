@@ -2,7 +2,9 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import DailyCaseClient from "./components/DailyCaseClient";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ItemsTab from "./components/ItemsTab";
+import UsersTab from "./components/UsersTab";
 
 const DailyCase = () => { 
   return (
@@ -27,7 +29,21 @@ const DailyCase = () => {
         />
       </div>
 
-      <DailyCaseClient />
+      {/* Tabs */}
+      <Tabs defaultValue="items" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6 md:w-1/2 mx-auto">
+          <TabsTrigger value="items">Items</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="items">
+          <ItemsTab />
+        </TabsContent>
+        
+        <TabsContent value="users">
+          <UsersTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
