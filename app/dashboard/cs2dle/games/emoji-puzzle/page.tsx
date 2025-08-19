@@ -35,6 +35,7 @@ import {
   Loader2,
   PlusIcon,
   ArrowLeft,
+  Smile,
 } from "lucide-react";
 import { format, isAfter, startOfDay } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
@@ -42,6 +43,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { GameAnswer } from "@/types/cs2dle/games/emoji-puzzle";
 import { Skin } from "@/types/cs2dle/games/guess-skin";
+import EmojiPicker from "emoji-picker-react";
 
 const EmojiPuzzle = () => {
   const [answers, setAnswers] = useState<GameAnswer[]>([]);
@@ -96,6 +98,10 @@ const EmojiPuzzle = () => {
     "",
   ]);
   const [isGeneratingEmojis, setIsGeneratingEmojis] = useState(false);
+
+  // Emoji picker state
+  const [createEmojiPickerOpen, setCreateEmojiPickerOpen] = useState<number | null>(null);
+  const [editEmojiPickerOpen, setEditEmojiPickerOpen] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchAnswers = async () => {
@@ -958,18 +964,37 @@ const EmojiPuzzle = () => {
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {createEmojis.map((emoji, index) => (
-                      <Input
-                        key={index}
-                        placeholder="😀"
-                        value={emoji}
-                        onChange={(e) => {
-                          const newEmojis = [...createEmojis];
-                          newEmojis[index] = e.target.value;
-                          setCreateEmojis(newEmojis);
-                        }}
-                        className="text-center text-lg"
-                        maxLength={2}
-                      />
+                      <div key={index} className="relative">
+                        <Popover
+                          open={createEmojiPickerOpen === index}
+                          onOpenChange={(open) => 
+                            setCreateEmojiPickerOpen(open ? index : null)
+                          }
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full h-10 text-center text-lg relative"
+                              onClick={() => setCreateEmojiPickerOpen(index)}
+                            >
+                              {emoji || "😀"}
+                              <Smile className="absolute right-2 h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <EmojiPicker
+                              onEmojiClick={(emojiObject) => {
+                                const newEmojis = [...createEmojis];
+                                newEmojis[index] = emojiObject.emoji;
+                                setCreateEmojis(newEmojis);
+                                setCreateEmojiPickerOpen(null);
+                              }}
+                              width={300}
+                              height={400}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1516,18 +1541,37 @@ const EmojiPuzzle = () => {
                 </div>
                 <div className="grid grid-cols-5 gap-2">
                   {editEmojis.map((emoji, index) => (
-                    <Input
-                      key={index}
-                      placeholder="😀"
-                      value={emoji}
-                      onChange={(e) => {
-                        const newEmojis = [...editEmojis];
-                        newEmojis[index] = e.target.value;
-                        setEditEmojis(newEmojis);
-                      }}
-                      className="text-center text-lg"
-                      maxLength={2}
-                    />
+                    <div key={index} className="relative">
+                      <Popover
+                        open={editEmojiPickerOpen === index}
+                        onOpenChange={(open) => 
+                          setEditEmojiPickerOpen(open ? index : null)
+                        }
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full h-10 text-center text-lg relative"
+                            onClick={() => setEditEmojiPickerOpen(index)}
+                          >
+                            {emoji || "😀"}
+                            <Smile className="absolute right-2 h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                          <EmojiPicker
+                            onEmojiClick={(emojiObject) => {
+                              const newEmojis = [...editEmojis];
+                              newEmojis[index] = emojiObject.emoji;
+                              setEditEmojis(newEmojis);
+                              setEditEmojiPickerOpen(null);
+                            }}
+                            width={300}
+                            height={400}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   ))}
                 </div>
               </div>
