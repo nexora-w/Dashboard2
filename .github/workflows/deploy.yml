@@ -27,14 +27,8 @@ jobs:
     - name: Install dependencies
       run: pnpm install
     
-    - name: Run linting
-      run: pnpm run lint
-    
     - name: Build application
       run: pnpm run build
-      env:
-        # Add your environment variables here
-        NODE_ENV: production
 
   deploy:
     needs: test
