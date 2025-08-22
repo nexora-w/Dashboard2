@@ -2,38 +2,18 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import clientPromise from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 type WeeklyPrizeData = {
-  skinId: string;
   name: string;
-  description?: string;
   image?: string;
-  weapon?: {
-    id: string;
-    weapon_id: number;
-    name: string;
-  };
-  category?: {
-    id: string;
-    name: string;
-  };
-  pattern?: {
-    id: string;
-    name: string;
-  };
-  min_float?: number;
-  max_float?: number;
+  price?: number;
+  weekStartDate: string;
+  weekEndDate: string;
   rarity?: {
-    id: string;
     name: string;
     color: string;
   };
-  stattrak?: boolean;
-  souvenir?: boolean;
-  paint_index?: string;
-  price?: number;
-  weekStartDate: string; // YYYY-MM-DD format
-  weekEndDate: string; // YYYY-MM-DD format
   status: 'active' | 'inactive';
   createdBy?: string;
   lastModifiedBy?: string;
@@ -76,9 +56,9 @@ export async function POST(request: Request) {
     const data = await request.json();
     
     // Validate required fields
-    if (!data.skinId || !data.name || !data.weekStartDate || !data.weekEndDate) {
+    if (!data.name || !data.weekStartDate || !data.weekEndDate) {
       return NextResponse.json(
-        { error: 'skinId, name, weekStartDate, and weekEndDate are required' },
+        { error: 'name, weekStartDate, and weekEndDate are required' },
         { status: 400 }
       );
     }
@@ -86,7 +66,7 @@ export async function POST(request: Request) {
     const client = await clientPromise;
     const db = client.db();
 
-    // Check if there's already a prize for this week
+    // Check if there's already a prize for this week or overlapping period
     const existingPrize = await db.collection('weeklyprizes').findOne({
       $or: [
         {
@@ -105,22 +85,12 @@ export async function POST(request: Request) {
 
     // Create new weekly prize
     const weeklyPrize = {
-      skinId: data.skinId,
       name: data.name,
-      description: data.description,
-      image: data.image,
-      weapon: data.weapon,
-      category: data.category,
-      pattern: data.pattern,
-      min_float: data.min_float,
-      max_float: data.max_float,
-      rarity: data.rarity,
-      stattrak: data.stattrak,
-      souvenir: data.souvenir,
-      paint_index: data.paint_index,
-      price: data.price,
+      image: data.image || '',
+      price: data.price || 0,
       weekStartDate: data.weekStartDate,
       weekEndDate: data.weekEndDate,
+      rarity: data.rarity || { name: 'Consumer Grade', color: '#b0c3d9' },
       status: 'active' as const,
       createdBy: session.user.email || undefined,
       lastModifiedBy: session.user.email || undefined,
@@ -152,9 +122,9 @@ export async function PATCH(request: Request) {
 
     const data = await request.json();
     
-    if (!data.skinId) {
+    if (!data._id) {
       return NextResponse.json(
-        { error: 'skinId is required' },
+        { error: '_id is required' },
         { status: 400 }
       );
     }
@@ -169,13 +139,16 @@ export async function PATCH(request: Request) {
 
     // Only update fields that are provided
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.image !== undefined) updateData.image = data.image;
+    if (data.price !== undefined) updateData.price = data.price;
+    if (data.rarity !== undefined) updateData.rarity = data.rarity;
     if (data.weekStartDate !== undefined) updateData.weekStartDate = data.weekStartDate;
     if (data.weekEndDate !== undefined) updateData.weekEndDate = data.weekEndDate;
-    if (data.price !== undefined) updateData.price = data.price;
 
     // If updating dates, check for conflicts
     if (data.weekStartDate || data.weekEndDate) {
-      const currentPrize = await db.collection('weeklyprizes').findOne({ skinId: data.skinId });
+      const currentPrize = await db.collection('weeklyprizes').findOne({ _id: new ObjectId(data._id) });
       if (!currentPrize) {
         return NextResponse.json(
           { error: 'Weekly prize not found' },
@@ -187,7 +160,7 @@ export async function PATCH(request: Request) {
       const newEndDate = data.weekEndDate || currentPrize.weekEndDate || '';
 
       const conflictingPrize = await db.collection('weeklyprizes').findOne({
-        skinId: { $ne: data.skinId },
+        _id: { $ne: new ObjectId(data._id) },
         $or: [
           {
             weekStartDate: { $lte: newEndDate },
@@ -205,7 +178,7 @@ export async function PATCH(request: Request) {
     }
 
     const result = await db.collection('weeklyprizes').updateOne(
-      { skinId: data.skinId },
+      { _id: new ObjectId(data._id) },
       { $set: updateData }
     );
 
@@ -236,11 +209,11 @@ export async function DELETE(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const skinId = searchParams.get('skinId');
+    const _id = searchParams.get('_id');
 
-    if (!skinId) {
+    if (!_id) {
       return NextResponse.json(
-        { error: 'skinId is required' },
+        { error: '_id is required' },
         { status: 400 }
       );
     }
@@ -248,7 +221,7 @@ export async function DELETE(request: Request) {
     const client = await clientPromise;
     const db = client.db();
 
-    const result = await db.collection('weeklyprizes').deleteOne({ skinId });
+    const result = await db.collection('weeklyprizes').deleteOne({ _id: new ObjectId(_id) });
 
     if (result.deletedCount === 0) {
       return NextResponse.json(

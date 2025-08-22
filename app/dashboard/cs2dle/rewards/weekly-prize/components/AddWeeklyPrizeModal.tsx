@@ -5,11 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "@/components/ui/use-toast";
-import type { WeeklyPrize } from "./WeeklyPrizeClient";
 
 interface AddWeeklyPrizeModalProps {
   isOpen: boolean;
@@ -20,42 +18,35 @@ interface AddWeeklyPrizeModalProps {
 export function AddWeeklyPrizeModal({ isOpen, onClose, onSuccess }: AddWeeklyPrizeModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    skinId: "",
     name: "",
-    description: "",
     image: "",
-    weapon: {
-      name: "",
-      weapon_id: undefined as number | undefined,
-    },
-    category: {
-      name: "",
-    },
-    pattern: {
-      name: "",
-    },
-    min_float: undefined as number | undefined,
-    max_float: undefined as number | undefined,
+    price: 0,
+    weekStartDate: "",
+    weekEndDate: "",
     rarity: {
       name: "Consumer Grade",
       color: "#b0c3d9",
     },
-    paint_index: "",
-    price: 0,
-    weekStartDate: "",
-    weekEndDate: "",
-    stattrak: false,
-    souvenir: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.skinId || !formData.name || !formData.weekStartDate || !formData.weekEndDate) {
+    if (!formData.name || !formData.weekStartDate || !formData.weekEndDate) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in the name, week start date, and week end date fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate that end date is after start date
+    if (new Date(formData.weekEndDate) <= new Date(formData.weekStartDate)) {
+      toast({
+        title: "Error",
+        description: "Week end date must be after week start date",
         variant: "destructive",
       });
       return;
@@ -86,22 +77,12 @@ export function AddWeeklyPrizeModal({ isOpen, onClose, onSuccess }: AddWeeklyPri
       onClose();
       // Reset form
       setFormData({
-        skinId: "",
         name: "",
-        description: "",
         image: "",
-        weapon: { name: "", weapon_id: undefined },
-        category: { name: "" },
-        pattern: { name: "" },
-        min_float: undefined,
-        max_float: undefined,
-        rarity: { name: "Consumer Grade", color: "#b0c3d9" },
-        paint_index: "",
         price: 0,
         weekStartDate: "",
         weekEndDate: "",
-        stattrak: false,
-        souvenir: false,
+        rarity: { name: "Consumer Grade", color: "#b0c3d9" },
       });
     } catch (error) {
       toast({
@@ -133,24 +114,13 @@ export function AddWeeklyPrizeModal({ isOpen, onClose, onSuccess }: AddWeeklyPri
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Weekly Prize</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Basic Information */}
-          <div className="space-y-2">
-            <Label htmlFor="skinId">Skin ID *</Label>
-            <Input
-              id="skinId"
-              value={formData.skinId}
-              onChange={(e) => handleInputChange("skinId", e.target.value)}
-              placeholder="Unique skin identifier"
-              required
-            />
-          </div>
-
+          {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="name">Name *</Label>
             <Input
@@ -162,17 +132,7 @@ export function AddWeeklyPrizeModal({ isOpen, onClose, onSuccess }: AddWeeklyPri
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              placeholder="Item description"
-              rows={3}
-            />
-          </div>
-
+          {/* Image URL */}
           <div className="space-y-2">
             <Label htmlFor="image">Image URL</Label>
             <Input
@@ -187,99 +147,34 @@ export function AddWeeklyPrizeModal({ isOpen, onClose, onSuccess }: AddWeeklyPri
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="weekStartDate">Week Start Date *</Label>
-              <Input
-                id="weekStartDate"
-                type="date"
+              <DatePicker
                 value={formData.weekStartDate}
-                onChange={(e) => handleInputChange("weekStartDate", e.target.value)}
-                required
+                onChange={(date) => handleInputChange("weekStartDate", date)}
+                placeholder="Select start date"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="weekEndDate">Week End Date *</Label>
-              <Input
-                id="weekEndDate"
-                type="date"
+              <DatePicker
                 value={formData.weekEndDate}
-                onChange={(e) => handleInputChange("weekEndDate", e.target.value)}
-                required
+                onChange={(date) => handleInputChange("weekEndDate", date)}
+                placeholder="Select end date"
               />
             </div>
           </div>
 
-          {/* Weapon Information */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="weapon_name">Weapon Name</Label>
-              <Input
-                id="weapon_name"
-                value={formData.weapon.name}
-                onChange={(e) => handleNestedChange("weapon", "name", e.target.value)}
-                placeholder="Weapon name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="weapon_id">Weapon ID</Label>
-              <Input
-                id="weapon_id"
-                type="number"
-                value={formData.weapon.weapon_id || ""}
-                onChange={(e) => handleNestedChange("weapon", "weapon_id", e.target.value ? parseInt(e.target.value) : undefined)}
-                placeholder="Weapon ID"
-              />
-            </div>
-          </div>
-
-          {/* Category and Pattern */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="category_name">Category</Label>
-              <Input
-                id="category_name"
-                value={formData.category.name}
-                onChange={(e) => handleNestedChange("category", "name", e.target.value)}
-                placeholder="Category name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pattern_name">Pattern</Label>
-              <Input
-                id="pattern_name"
-                value={formData.pattern.name}
-                onChange={(e) => handleNestedChange("pattern", "name", e.target.value)}
-                placeholder="Pattern name"
-              />
-            </div>
-          </div>
-
-          {/* Float Values */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="min_float">Min Float</Label>
-              <Input
-                id="min_float"
-                type="number"
-                step="0.01"
-                min="0"
-                max="1"
-                value={formData.min_float || ""}
-                onChange={(e) => handleInputChange("min_float", e.target.value ? parseFloat(e.target.value) : undefined)}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max_float">Max Float</Label>
-              <Input
-                id="max_float"
-                type="number"
-                step="0.01"
-                min="0"
-                max="1"
-                value={formData.max_float || ""}
-                onChange={(e) => handleInputChange("max_float", e.target.value ? parseFloat(e.target.value) : undefined)}
-                placeholder="1.00"
-              />
-            </div>
+          {/* Price */}
+          <div className="space-y-2">
+            <Label htmlFor="price">Price ($)</Label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.price}
+              onChange={(e) => handleInputChange("price", parseFloat(e.target.value) || 0)}
+              placeholder="0.00"
+            />
           </div>
 
           {/* Rarity */}
@@ -322,52 +217,6 @@ export function AddWeeklyPrizeModal({ isOpen, onClose, onSuccess }: AddWeeklyPri
                 value={formData.rarity.color || "#b0c3d9"}
                 onChange={(e) => handleNestedChange("rarity", "color", e.target.value)}
               />
-            </div>
-          </div>
-
-          {/* Paint Index */}
-          <div className="space-y-2">
-            <Label htmlFor="paint_index">Paint Index</Label>
-            <Input
-              id="paint_index"
-              value={formData.paint_index}
-              onChange={(e) => handleInputChange("paint_index", e.target.value)}
-              placeholder="Paint index"
-            />
-          </div>
-
-          {/* Price */}
-          <div className="space-y-2">
-            <Label htmlFor="price">Price ($)</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.price}
-              onChange={(e) => handleInputChange("price", parseFloat(e.target.value) || 0)}
-              placeholder="0.00"
-            />
-          </div>
-
-          {/* Switches */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="stattrak"
-                checked={formData.stattrak}
-                onCheckedChange={(checked) => handleInputChange("stattrak", checked)}
-              />
-              <Label htmlFor="stattrak">StatTrak</Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="souvenir"
-                checked={formData.souvenir}
-                onCheckedChange={(checked) => handleInputChange("souvenir", checked)}
-              />
-              <Label htmlFor="souvenir">Souvenir</Label>
             </div>
           </div>
 

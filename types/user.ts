@@ -19,6 +19,7 @@ export interface User {
   currentStreak?: number
   gamesPlayed?: number
   dailyCase?: DailyCase[]
+  weeklyPrize?: WeeklyPrize[]
   // Additional fields
   tradeLink?: string
   cryptoAddresses?: {
@@ -31,6 +32,15 @@ export interface DailyCase {
   id: string
   active: boolean
   date: string
+}
+
+export interface WeeklyPrize {
+  id: string
+  active: boolean
+  weekStartDate: string
+  weekEndDate: string
+  claimData?: string
+  receivedData?: string
 }
 
 export interface SafeUser {

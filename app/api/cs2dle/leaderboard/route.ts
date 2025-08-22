@@ -1,13 +1,33 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { Precase } from '@/types/precases';
 import { getServerSession } from 'next-auth';
 
-interface DailyCase {
+interface WeeklyPrizeRef {
   id: string;
   active: boolean;
-  date: string;
+  weekStartDate: string;
+  weekEndDate: string;
+  claimData: string;
+  receivedData?: string;
+}
+
+interface WeeklyPrizeDocument {
+  _id: ObjectId;
+  name: string;
+  image: string;
+  price: number;
+  weekStartDate: string;
+  weekEndDate: string;
+  rarity: {
+    name: string;
+    color: string;
+  };
+  status: string;
+  createdBy: string;
+  lastModifiedBy: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface User {
@@ -18,7 +38,7 @@ interface User {
   bestStreak?: number;
   gamesPlayed?: number;
   currentStreak?: number;
-  dailyCase?: DailyCase[];
+  weeklyPrize?: WeeklyPrizeRef[];
   ticket?: number;
 }
 
@@ -66,45 +86,48 @@ export async function GET(request: Request) {
       .limit(validLimit)
       .toArray() as User[];
 
-    // Get all unique precase IDs from dailyCase arrays
-    const precaseIds = new Set<string>();
+    // Get all unique weekly prize IDs from weeklyPrize arrays
+    const weeklyPrizeIds = new Set<string>();
     users.forEach(user => {
-      if (user.dailyCase && Array.isArray(user.dailyCase)) {
-        user.dailyCase.forEach((dailyCase: DailyCase) => {
-          if (dailyCase.id) {
-            precaseIds.add(dailyCase.id);
+      if (user.weeklyPrize && Array.isArray(user.weeklyPrize)) {
+        user.weeklyPrize.forEach((weeklyPrize: WeeklyPrizeRef) => {
+          if (weeklyPrize.id) {
+            weeklyPrizeIds.add(weeklyPrize.id);
           }
         });
       }
     });
 
-    // Fetch all precases that are referenced in dailyCase arrays
-    const precases = await db
-      .collection('precases')
+    // Fetch all weekly prizes that are referenced in weeklyPrize arrays
+    const weeklyPrizes = await db
+      .collection('weeklyprizes')
       .find({ 
-        _id: { $in: Array.from(precaseIds).map(id => new ObjectId(id)) }
+        _id: { $in: Array.from(weeklyPrizeIds).map(id => new ObjectId(id)) }
       })
-      .toArray() as Precase[];
+      .toArray() as WeeklyPrizeDocument[];
 
     // Create a map for quick lookup
-    const precaseMap = new Map();
-    precases.forEach(precase => {
-      if (precase._id) {
-        precaseMap.set(precase._id.toString(), precase);
+    const weeklyPrizeMap = new Map();
+    weeklyPrizes.forEach(weeklyPrize => {
+      if (weeklyPrize._id) {
+        weeklyPrizeMap.set(weeklyPrize._id.toString(), weeklyPrize);
       }
     });
 
     // Transform the data to match the expected format
     const leaderboardData = users.map((user, index) => {
-      // Get precase data for each dailyCase entry
-      const prizes = user.dailyCase && Array.isArray(user.dailyCase) 
-        ? user.dailyCase.map((dailyCase: DailyCase) => {
-            const precase = precaseMap.get(dailyCase.id);
+      // Get weekly prize data for each weeklyPrize entry
+      const prizes = user.weeklyPrize && Array.isArray(user.weeklyPrize) 
+        ? user.weeklyPrize.map((weeklyPrize: WeeklyPrizeRef) => {
+            const weeklyPrizeDoc = weeklyPrizeMap.get(weeklyPrize.id);
             return {
-              id: dailyCase.id,
-              active: dailyCase.active,
-              date: dailyCase.date,
-              precase: precase || null // Include the full precase data or null if not found
+              id: weeklyPrize.id,
+              active: weeklyPrize.active,
+              weekStartDate: weeklyPrize.weekStartDate,
+              weekEndDate: weeklyPrize.weekEndDate,
+              claimData: weeklyPrize.claimData,
+              receivedData: weeklyPrize.receivedData,
+              weeklyPrize: weeklyPrizeDoc || null // Include the full weekly prize data or null if not found
             };
           })
         : [];
@@ -112,17 +135,17 @@ export async function GET(request: Request) {
       // Find the most expensive prize among user's prizes
       // Filter out prizes without price data and find the one with highest price
       const mostExpensivePrize = prizes
-        .filter(prize => prize.precase && typeof prize.precase.price === 'number')
+        .filter(prize => prize.weeklyPrize && typeof prize.weeklyPrize.price === 'number')
         .reduce((maxPrize, currentPrize) => {
-          const currentPrice = currentPrize.precase?.price || 0;
-          const maxPrice = maxPrize.precase?.price || 0;
+          const currentPrice = currentPrize.weeklyPrize?.price || 0;
+          const maxPrice = maxPrize.weeklyPrize?.price || 0;
           return currentPrice > maxPrice ? currentPrize : maxPrize;
         }, prizes[0] || null);
 
       // Extract only name and image from the most expensive prize
-      const prizeData = mostExpensivePrize && mostExpensivePrize.precase ? {
-        name: mostExpensivePrize.precase.name || 'Unknown Skin',
-        image: mostExpensivePrize.precase.image || '/placeholder.jpg'
+      const prizeData = mostExpensivePrize && mostExpensivePrize.weeklyPrize ? {
+        name: mostExpensivePrize.weeklyPrize.name || 'Unknown Skin',
+        image: mostExpensivePrize.weeklyPrize.image || '/placeholder.jpg'
       } : null;
 
       return {

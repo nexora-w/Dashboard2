@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
-import type { WeeklyPrize } from "./WeeklyPrizeClient";
+import type { WeeklyPrize } from "./ItemsTab";
 
 interface DeleteWeeklyPrizeModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export function DeleteWeeklyPrizeModal({ isOpen, onClose, item, onSuccess }: Del
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/cs2dle/rewards/weekly-prize?skinId=${item.skinId}`, {
+      const response = await fetch(`/api/cs2dle/rewards/weekly-prize?_id=${item._id}`, {
         method: 'DELETE',
       });
 
