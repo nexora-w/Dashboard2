@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     const dailyStats = await db.collection('DailyStats').find(dailyStatsQuery).toArray();
 
     // Process analytics data
-    const analytics = processAnalyticsData(gameHistory, dailyStats, period);
+    const analytics = processAnalyticsData(gameHistory, dailyStats, period, now);
 
     return NextResponse.json(analytics);
   } catch (error) {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function processAnalyticsData(gameHistory: any[], dailyStats: any[], period: string) {
+function processAnalyticsData(gameHistory: any[], dailyStats: any[], period: string, now: any) {
   // Game performance metrics
   const totalGames = gameHistory.length;
   const totalWins = gameHistory.reduce((sum, game) => sum + (game.correctGuess ? 1 : 0), 0);
@@ -170,10 +170,14 @@ function processAnalyticsData(gameHistory: any[], dailyStats: any[], period: str
   }, {} as Record<number, { games: number; wins: number }>);
 
   // Convert to array format for easier charting
+  // Show all 24 hours but distinguish between completed and upcoming
+  const currentHour = now.getHours();
   const hourlyData = Array.from({ length: 24 }, (_, hour) => ({
     hour,
     games: hourlyStats[hour]?.games || 0,
-    winRate: hourlyStats[hour]?.games > 0 ? (hourlyStats[hour].wins / hourlyStats[hour].games) * 100 : 0
+    winRate: hourlyStats[hour]?.games > 0 ? (hourlyStats[hour].wins / hourlyStats[hour].games) * 100 : 0,
+    isCompleted: hour <= currentHour,
+    isCurrentHour: hour === currentHour
   }));
 
   // Recent activity (last 7 days)

@@ -43,6 +43,8 @@ interface AnalyticsData {
     hour: number;
     games: number;
     winRate: number;
+    isCompleted: boolean;
+    isCurrentHour: boolean;
   }>;
   recentActivity: Array<{
     date: string;
@@ -122,7 +124,8 @@ const AnalyticsPage = () => {
   };
 
   const formatHour = (hour: number) => {
-    return `${hour}:00`;
+    // Format hour in 24-hour format with Amsterdam timezone indication
+    return `${hour.toString().padStart(2, '0')}:00 (Amsterdam)`;
   };
 
   if (loading) {
@@ -192,8 +195,11 @@ const AnalyticsPage = () => {
 
   const hourlyChartData = data.hourlyStats.map(item => ({
     hour: formatHour(item.hour),
+    hourLabel: `${item.hour.toString().padStart(2, '0')}:00`,
     games: item.games,
-    winRate: Math.round(item.winRate * 100) / 100
+    winRate: Math.round(item.winRate * 100) / 100,
+    isCompleted: item.isCompleted,
+    isCurrentHour: item.isCurrentHour
   }));
 
   return (
@@ -330,16 +336,30 @@ const AnalyticsPage = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Hourly Activity</CardTitle>
-                <CardDescription>Games played by hour of day</CardDescription>
+                <CardDescription>Games played by hour of day (Amsterdam timezone, showing all 24 hours)</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={hourlyChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" />
+                    <XAxis dataKey="hourLabel" />
                     <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="games" fill="#8884d8" />
+                    <Tooltip 
+                      formatter={(value: any, name: any) => [value, name]}
+                      labelFormatter={(label: any) => `${label} (Amsterdam time)`}
+                    />
+                    <Bar dataKey="games" fill="#8884d8">
+                      {hourlyChartData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={
+                            entry.isCurrentHour ? '#FF6B6B' : // Red for current hour
+                            entry.isCompleted ? '#8884d8' : // Blue for completed hours
+                            '#E0E0E000' // Gray for upcoming hours
+                          }
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
