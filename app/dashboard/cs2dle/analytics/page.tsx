@@ -5,10 +5,29 @@ import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import AnalyticsSkeleton from "@/components/AnalyticsSkeleton";
+
+interface PageVisitData {
+  pageName: string;
+  date: string;
+  visitCount: number;
+  lastVisit?: string;
+}
+
+interface PageVisitorResponse {
+  message: string;
+  date: string;
+  totalVisits: number;
+  pageVisits: PageVisitData[];
+}
 
 interface AnalyticsData {
   summary: {
@@ -59,10 +78,13 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const AnalyticsPage = () => {
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [pageVisitorData, setPageVisitorData] = useState<PageVisitorResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pageVisitorLoading, setPageVisitorLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState('7d');
   const [gameType, setGameType] = useState('all');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -107,9 +129,40 @@ const AnalyticsPage = () => {
     }
   };
 
+  const fetchPageVisitorData = async (date?: Date) => {
+    setPageVisitorLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (date) {
+        const dateString = format(date, 'yyyy-MM-dd');
+        params.append('date', dateString);
+      }
+      
+      const response = await fetch(`/api/cs2dle/analytics/page-viewer?${params}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const pageVisitorResponse = await response.json();
+      setPageVisitorData(pageVisitorResponse);
+    } catch (error) {
+      console.error('Failed to fetch page visitor data:', error);
+    } finally {
+      setPageVisitorLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAnalytics();
+    fetchPageVisitorData();
   }, [period, gameType]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      fetchPageVisitorData(selectedDate);
+    }
+  }, [selectedDate]);
 
   // Clear error when filters change
   useEffect(() => {
@@ -310,6 +363,7 @@ const AnalyticsPage = () => {
           <TabsTrigger value="games">Game Analytics</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="visitors">Visitor Analytics</TabsTrigger>
+          <TabsTrigger value="pageviews">Page Views</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -509,6 +563,135 @@ const AnalyticsPage = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="pageviews" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Page Visit Statistics</CardTitle>
+                  <CardDescription>View page visit counts by specific date</CardDescription>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-40 justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Button 
+                    onClick={() => fetchPageVisitorData(selectedDate)}
+                    disabled={pageVisitorLoading}
+                    variant="outline"
+                  >
+                    {pageVisitorLoading ? 'Loading...' : 'Refresh'}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {pageVisitorLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-muted-foreground">Loading page visitor data...</div>
+                </div>
+              ) : pageVisitorData ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="text-center p-4 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold">{pageVisitorData.totalVisits}</div>
+                      <div className="text-sm text-muted-foreground">Total Page Visits</div>
+                    </div>
+                    <div className="text-center p-4 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold">{pageVisitorData.pageVisits.length}</div>
+                      <div className="text-sm text-muted-foreground">Unique Pages</div>
+                    </div>
+                    <div className="text-center p-4 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold">{pageVisitorData.date}</div>
+                      <div className="text-sm text-muted-foreground">Date</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Page Visits Chart</CardTitle>
+                        <CardDescription>Visit count by page</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={pageVisitorData.pageVisits}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="pageName" 
+                              angle={-45}
+                              textAnchor="end"
+                              height={100}
+                              interval={0}
+                            />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="visitCount" fill="#8884d8" name="Visits" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Page Distribution</CardTitle>
+                        <CardDescription>Visit distribution across pages</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={pageVisitorData.pageVisits}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ pageName, percent }) => `${pageName} ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="visitCount"
+                            >
+                              {pageVisitorData.pageVisits.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <div className="text-muted-foreground mb-4">No page visitor data available</div>
+                    <Button onClick={() => fetchPageVisitorData()}>Load Data</Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
