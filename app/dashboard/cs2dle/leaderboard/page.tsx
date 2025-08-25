@@ -13,9 +13,23 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Trophy, Medal, Award } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Trophy,
+  Medal,
+  Award,
+  ChevronDown,
+} from "lucide-react";
 import Image from "next/image";
 import LeaderboardSkeleton from "@/components/LeaderboardSkeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface LeaderboardUser {
   _id: string;
@@ -28,6 +42,18 @@ interface Prize {
   image: string;
 }
 
+interface AvailablePrize {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  rarity: {
+    name: string;
+    color: string;
+  };
+  isShow: boolean;
+}
+
 interface LeaderboardEntry {
   position: number;
   user: LeaderboardUser;
@@ -36,6 +62,7 @@ interface LeaderboardEntry {
   guesses: number;
   tickets: number;
   prize: Prize | null;
+  allPrizes: AvailablePrize[];
 }
 
 interface PaginationInfo {
@@ -58,6 +85,9 @@ const LeaderboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedPrizes, setSelectedPrizes] = useState<Record<string, string>>(
+    {}
+  );
 
   const fetchLeaderboard = async (page: number) => {
     try {
@@ -103,10 +133,61 @@ const LeaderboardPage = () => {
     return <Badge variant="secondary">#{position}</Badge>;
   };
 
+  const handlePrizeChange = async (userId: string, prizeIndex: string) => {
+    try {
+      // Update local state immediately for better UX
+      setSelectedPrizes((prev) => ({
+        ...prev,
+        [userId]: prizeIndex,
+      }));
+
+      // Update the isShow status on the server
+      if (prizeIndex) {
+        const response = await fetch("/api/cs2dle/leaderboard", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            prizeIndex,
+          }),
+        });
+
+        if (response.ok) {
+          // Refresh the leaderboard data to get updated isShow statuses
+          await fetchLeaderboard(currentPage);
+        } else {
+          throw new Error('Failed to update prize show status');
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update prize show status:", error);
+      // Revert local state if server update fails
+      setSelectedPrizes((prev) => {
+        const newState = { ...prev };
+        delete newState[userId];
+        return newState;
+      });
+    }
+  };
+
+  const getDisplayPrize = (entry: LeaderboardEntry): Prize | null => {
+    // Only show prizes where isShow is true
+    const showPrize = entry.allPrizes.find((prize) => prize.isShow === true);
+    if (showPrize) {
+      return {
+        name: showPrize.name,
+        image: showPrize.image,
+      };
+    }
+
+    // If no prize has isShow: true, return null
+    return null;
+  };
+
   if (loading && !data) {
-    return (
-      <LeaderboardSkeleton />
-    );
+    return <LeaderboardSkeleton />;
   }
 
   if (error) {
@@ -149,7 +230,9 @@ const LeaderboardPage = () => {
                     </TableHead>
                     <TableHead className="text-center">Games Played</TableHead>
                     <TableHead className="text-center">Tickets</TableHead>
-                    <TableHead className="text-center">Best Prize</TableHead>
+                    <TableHead className="text-center">
+                      Prize (Click to change)
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -199,18 +282,101 @@ const LeaderboardPage = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        {entry.prize ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <Image
-                              src={entry.prize.image}
-                              alt={entry.prize.name}
-                              width={40}
-                              height={40}
-                              className="rounded-none object-cover"
-                            />
-                            <span className="text-sm text-muted-foreground truncate max-w-24">
-                              {entry.prize.name}
-                            </span>
+                        {entry.allPrizes && entry.allPrizes.length > 0 ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="flex flex-col items-center gap-1">
+                              {entry.allPrizes.length > 1 && (
+                                <div className="flex items-center gap-1">
+                                  <Select
+                                    value={selectedPrizes[entry.user._id] || ""}
+                                    onValueChange={(value) =>
+                                      handlePrizeChange(entry.user._id, value)
+                                    }
+                                  >
+                                    <SelectTrigger className="w-full py-3 text-xs">
+                                      <div className="flex items-center gap-2">
+                                        {getDisplayPrize(entry) ? (
+                                          <>
+                                            <Image
+                                              src={getDisplayPrize(entry)?.image || "/placeholder.jpg"}
+                                              alt={getDisplayPrize(entry)?.name || "Unknown"}
+                                              width={50}
+                                              height={50}
+                                              className="rounded-none object-cover"
+                                              onError={(e) => {
+                                                const target =
+                                                  e.target as HTMLImageElement;
+                                                target.src = "/placeholder.jpg";
+                                              }}
+                                            />
+                                            <div className="flex flex-col items-start gap-1">
+                                              <span className="text-sm text-muted-foreground truncate max-w-32 text-center">
+                                                {getDisplayPrize(entry)?.name || "Unknown"}
+                                                {entry.allPrizes.length > 1 && (
+                                                  <span className="ml-1 text-xs text-blue-500">
+                                                    ({entry.allPrizes.length})
+                                                  </span>
+                                                )}
+                                              </span>
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-[50px] h-[50px] bg-muted rounded-none flex items-center justify-center">
+                                              <span className="text-xs text-muted-foreground">No Prize</span>
+                                            </div>
+                                            <div className="flex flex-col items-start gap-1">
+                                              <span className="text-sm text-muted-foreground truncate max-w-32 text-center">
+                                                Select a prize to display
+                                              </span>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {entry.allPrizes.map((prize, index) => (
+                                        <SelectItem
+                                          key={index}
+                                          value={index.toString()}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <Image
+                                              src={prize.image}
+                                              alt={prize.name}
+                                              width={50}
+                                              height={50}
+                                              className="rounded-none object-cover"
+                                              onError={(e) => {
+                                                const target =
+                                                  e.target as HTMLImageElement;
+                                                target.src = "/placeholder.jpg";
+                                              }}
+                                            />
+                                            <span className="truncate">
+                                              {prize.name}
+                                            </span>
+                                            <div className="flex items-center gap-1 ml-auto">
+                                              <Badge
+                                                variant="outline"
+                                                className="text-xs"
+                                                style={{
+                                                  borderColor:
+                                                    prize.rarity.color,
+                                                  color: prize.rarity.color,
+                                                }}
+                                              >
+                                                {prize.rarity.name}
+                                              </Badge>
+                                            </div>
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">

@@ -10,6 +10,7 @@ interface WeeklyPrizeRef {
   weekEndDate: string;
   claimData: string;
   receivedData?: string;
+  isShow?: boolean;
 }
 
 interface WeeklyPrizeDocument {
@@ -127,26 +128,40 @@ export async function GET(request: Request) {
               weekEndDate: weeklyPrize.weekEndDate,
               claimData: weeklyPrize.claimData,
               receivedData: weeklyPrize.receivedData,
+              isShow: weeklyPrize.isShow || false,
               weeklyPrize: weeklyPrizeDoc || null // Include the full weekly prize data or null if not found
             };
           })
         : [];
 
-      // Find the most expensive prize among user's prizes
-      // Filter out prizes without price data and find the one with highest price
-      const mostExpensivePrize = prizes
-        .filter(prize => prize.weeklyPrize && typeof prize.weeklyPrize.price === 'number')
-        .reduce((maxPrize, currentPrize) => {
-          const currentPrice = currentPrize.weeklyPrize?.price || 0;
-          const maxPrice = maxPrize.weeklyPrize?.price || 0;
-          return currentPrice > maxPrice ? currentPrize : maxPrize;
-        }, prizes[0] || null);
-
-      // Extract only name and image from the most expensive prize
-      const prizeData = mostExpensivePrize && mostExpensivePrize.weeklyPrize ? {
-        name: mostExpensivePrize.weeklyPrize.name || 'Unknown Skin',
-        image: mostExpensivePrize.weeklyPrize.image || '/placeholder.jpg'
+      // Find the prize that should be displayed (isShow: true first, then last prize)
+      const displayPrize = prizes.find(prize => prize.isShow === true) || prizes[prizes.length - 1];
+      
+      // Extract only name and image from the display prize
+      const defaultPrize = displayPrize && displayPrize.weeklyPrize ? {
+        name: displayPrize.weeklyPrize.name || 'Unknown Skin',
+        image: displayPrize.weeklyPrize.image || '/placeholder.jpg'
       } : null;
+
+      // Create a list of all available prizes for the dropdown
+      // Sort by isShow first (true values first), then by price descending
+      const availablePrizes = prizes
+        .filter(prize => prize.weeklyPrize)
+        .map(prize => ({
+          id: prize.id,
+          name: prize.weeklyPrize?.name || 'Unknown Skin',
+          image: prize.weeklyPrize?.image || '/placeholder.jpg',
+          price: prize.weeklyPrize?.price || 0,
+          rarity: prize.weeklyPrize?.rarity || { name: 'Unknown', color: '#666' },
+          isShow: prize.isShow || false
+        }))
+        .sort((a, b) => {
+          // First sort by isShow (true values first)
+          if (a.isShow && !b.isShow) return -1;
+          if (!a.isShow && b.isShow) return 1;
+          // Then sort by price descending
+          return b.price - a.price;
+        });
 
       return {
         position: skip + index + 1, // Calculate global position
@@ -159,7 +174,8 @@ export async function GET(request: Request) {
         currentStreak: user.currentStreak || 0,
         guesses: user.gamesPlayed || 0,
         tickets: user.ticket || 0,
-        prize: prizeData // Return only the name and image of the prize skin
+        prize: defaultPrize, // Return the default prize (most expensive) for backward compatibility
+        allPrizes: availablePrizes // Return all available prizes for the dropdown
       };
     });
 
@@ -187,6 +203,71 @@ export async function GET(request: Request) {
       { 
         success: false, 
         error: 'Failed to fetch leaderboard data' 
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { userId, prizeIndex } = await request.json();
+
+    if (!userId || !prizeIndex) {
+      return NextResponse.json(
+        { message: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    const client = await clientPromise;
+    const db = client.db();
+
+    // First, set all prizes for this user to isShow: false
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $set: {
+          'weeklyPrize.$[].isShow': false
+        }
+      }
+    );
+
+    // Then, set the selected prize to isShow: true
+    const result = await db.collection('users').updateOne(
+      { 
+        _id: new ObjectId(userId)
+      },
+      {
+        $set: {
+          [`weeklyPrize.${prizeIndex}.isShow`]: true
+        }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { message: 'User or prize not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Prize show status updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Update prize show status error:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to update prize show status' 
       },
       { status: 500 }
     );
