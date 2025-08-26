@@ -33,6 +33,20 @@ const games = [
     },
   },
   {
+    id: "Wordle",
+    title: "Wordle",
+    description: "Guess the word of the day",
+    image: "/images/cs2dle/games/wordle.png",
+    href: "/dashboard/cs2dle/games/wordle",
+    status: "active",
+    gradient: {
+      primary: "#E70000",
+      secondary: "#FF0000",
+      accent: "#FF0000",
+      overlay: "rgba(255, 0, 0, 0.15)",
+    },
+  },
+  {
     id: "guess-the-price",
     title: "Guess the Price",
     description: "Predict the market price of CS2 items",
