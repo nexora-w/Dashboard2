@@ -1593,7 +1593,5 @@ const CS2_WORDS = [
   "LEVER",
   "TURBO",
 ];
-export { CS2_WORDS };
-
 
 export { CS2_WORDS };
