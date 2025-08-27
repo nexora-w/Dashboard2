@@ -61,6 +61,11 @@ const WordlePage = () => {
   const [deletingAnswer, setDeletingAnswer] = useState<WordleAnswer | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // View all words modal state
+  const [isViewAllWordsModalOpen, setIsViewAllWordsModalOpen] = useState(false);
+  const [allWordsSearchQuery, setAllWordsSearchQuery] = useState("");
+  const [allWordsFiltered, setAllWordsFiltered] = useState<string[]>([]);
+
   useEffect(() => {
     const fetchAnswers = async () => {
       try {
@@ -103,6 +108,18 @@ const WordlePage = () => {
       setEditFilteredWords(filtered.slice(0, 100)); // Limit to 100 results for performance
     }
   }, [editSearchQuery]);
+
+  // Filter all words based on search query
+  useEffect(() => {
+    if (allWordsSearchQuery.trim() === "") {
+      setAllWordsFiltered(CS2_WORDS);
+    } else {
+      const filtered = CS2_WORDS.filter(word =>
+        word.toLowerCase().includes(allWordsSearchQuery.toLowerCase())
+      );
+      setAllWordsFiltered(filtered);
+    }
+  }, [allWordsSearchQuery]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -354,7 +371,73 @@ const WordlePage = () => {
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Daily Answers</h2>
-        <Modal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <div className="flex gap-2">
+          <Modal open={isViewAllWordsModalOpen} onOpenChange={setIsViewAllWordsModalOpen}>
+            <ModalTrigger asChild>
+              <Button variant="outline">
+                <Search className="h-4 w-4 mr-2" />
+                View All Words
+              </Button>
+            </ModalTrigger>
+            <ModalContent className="max-w-4xl max-h-[80vh]">
+              <ModalHeader>
+                <ModalTitle>All Available Words</ModalTitle>
+                <ModalDescription>
+                  Browse and search through all {CS2_WORDS.length} available words for Wordle.
+                </ModalDescription>
+              </ModalHeader>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search words..."
+                    value={allWordsSearchQuery}
+                    onChange={(e) => setAllWordsSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <div className="border rounded-md">
+                  <div className="p-3 border-b bg-muted/50">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">
+                        {allWordsFiltered.length} word{allWordsFiltered.length !== 1 ? 's' : ''} found
+                      </span>
+                      {allWordsSearchQuery && (
+                        <span className="text-sm text-muted-foreground">
+                          Showing results for "{allWordsSearchQuery}"
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="max-h-96 overflow-auto p-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                      {allWordsFiltered.map((word, index) => (
+                        <div
+                          key={index}
+                          className="p-2 text-sm border rounded hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-center"
+                          onClick={() => {
+                            setAllWordsSearchQuery(word);
+                          }}
+                        >
+                          {word}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button onClick={() => setIsViewAllWordsModalOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </ModalContent>
+          </Modal>
+          
+          <Modal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <ModalTrigger asChild>
             <Button>
               <PlusIcon className="h-4 w-4 mr-2" />
@@ -502,6 +585,7 @@ const WordlePage = () => {
             </div>
           </ModalContent>
         </Modal>
+        </div>
       </div>
 
       {/* Edit Modal */}
