@@ -7,7 +7,12 @@ export interface EmojiPuzzle {
   rarity?: string;
   team?: string;
   emojis: string[];
-  hints: string[];
+  hints: {
+    english: string[];
+    dutch: string[];
+    chinese: string[];
+    russian: string[];
+  };
   explanations?: string[];
 }
 
@@ -17,7 +22,12 @@ export interface GameAnswer {
     [key: string]: {
       skinId: string;
       emojis: string[];
-      hints: string[];
+      hints: {
+        english: string[];
+        dutch: string[];
+        chinese: string[];
+        russian: string[];
+      };
       explanations?: string[];
       skin?: {
         id: string;

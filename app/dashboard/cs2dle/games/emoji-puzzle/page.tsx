@@ -82,7 +82,17 @@ const EmojiPuzzle = () => {
 
   // Emoji puzzle specific state
   const [editEmojis, setEditEmojis] = useState<string[]>(["", "", "", "", ""]);
-  const [editHints, setEditHints] = useState<string[]>(["", "", "", "", ""]);
+  const [editHints, setEditHints] = useState<{
+    english: string[];
+    dutch: string[];
+    chinese: string[];
+    russian: string[];
+  }>({
+    english: ["", "", "", "", ""],
+    dutch: ["", "", "", "", ""],
+    chinese: ["", "", "", "", ""],
+    russian: ["", "", "", "", ""]
+  });
   const [createEmojis, setCreateEmojis] = useState<string[]>([
     "",
     "",
@@ -90,13 +100,17 @@ const EmojiPuzzle = () => {
     "",
     "",
   ]);
-  const [createHints, setCreateHints] = useState<string[]>([
-    "",
-    "",
-    "",
-    "",
-    "",
-  ]);
+  const [createHints, setCreateHints] = useState<{
+    english: string[];
+    dutch: string[];
+    chinese: string[];
+    russian: string[];
+  }>({
+    english: ["", "", "", "", ""],
+    dutch: ["", "", "", "", ""],
+    chinese: ["", "", "", "", ""],
+    russian: ["", "", "", "", ""]
+  });
   const [isGeneratingEmojis, setIsGeneratingEmojis] = useState(false);
 
   // Emoji picker state
@@ -188,7 +202,12 @@ const EmojiPuzzle = () => {
       setEditEmojis([...gameData.emojis, "", "", "", "", ""].slice(0, 5));
     }
     if (gameData?.hints) {
-      setEditHints([...gameData.hints, "", "", "", "", ""].slice(0, 5));
+      setEditHints({
+        english: [...gameData.hints.english, "", "", "", "", ""].slice(0, 5),
+        dutch: [...gameData.hints.dutch, "", "", "", "", ""].slice(0, 5),
+        chinese: [...gameData.hints.chinese, "", "", "", "", ""].slice(0, 5),
+        russian: [...gameData.hints.russian, "", "", "", "", ""].slice(0, 5)
+      });
     }
   };
 
@@ -203,7 +222,12 @@ const EmojiPuzzle = () => {
     }
 
     const validEmojis = editEmojis.filter((emoji) => emoji.trim() !== "");
-    const validHints = editHints.filter((hint) => hint.trim() !== "");
+    const validHints = editHints.english.filter((hint) => hint.trim() !== "");
+    
+    // Check if all languages have at least one hint
+    const hasDutchHints = editHints.dutch.some(hint => hint.trim() !== "");
+    const hasChineseHints = editHints.chinese.some(hint => hint.trim() !== "");
+    const hasRussianHints = editHints.russian.some(hint => hint.trim() !== "");
 
     if (validEmojis.length === 0) {
       toast({
@@ -241,7 +265,12 @@ const EmojiPuzzle = () => {
               [editingSkin.gameType]: {
                 skinId: selectedSkinForEdit.id,
                 emojis: validEmojis,
-                hints: validHints,
+                hints: {
+                  english: validHints,
+                  dutch: editHints.dutch,
+                  chinese: editHints.chinese,
+                  russian: editHints.russian
+                },
                 skin: {
                   id: selectedSkinForEdit.id,
                   name: selectedSkinForEdit.name,
@@ -297,7 +326,7 @@ const EmojiPuzzle = () => {
       setEditSearchResults([]);
       setSelectedSkinForEdit(null);
       setEditEmojis(["", "", "", "", ""]);
-      setEditHints(["", "", "", "", ""]);
+      setEditHints({ english: ["", "", "", "", ""], dutch: ["", "", "", "", ""], chinese: ["", "", "", "", ""], russian: ["", "", "", "", ""] });
 
       toast({
         title: "Success",
@@ -474,10 +503,20 @@ const EmojiPuzzle = () => {
 
       if (isEditMode) {
         setEditEmojis([...data.emojis, "", "", "", "", ""].slice(0, 5));
-        setEditHints([...data.hints, "", "", "", "", ""].slice(0, 5));
+        setEditHints({
+          english: [...data.hints.english, "", "", "", "", ""].slice(0, 5),
+          dutch: [...data.hints.dutch, "", "", "", "", ""].slice(0, 5),
+          chinese: [...data.hints.chinese, "", "", "", "", ""].slice(0, 5),
+          russian: [...data.hints.russian, "", "", "", "", ""].slice(0, 5)
+        });
       } else {
         setCreateEmojis([...data.emojis, "", "", "", "", ""].slice(0, 5));
-        setCreateHints([...data.hints, "", "", "", "", ""].slice(0, 5));
+        setCreateHints({
+          english: [...data.hints.english, "", "", "", "", ""].slice(0, 5),
+          dutch: [...data.hints.dutch, "", "", "", "", ""].slice(0, 5),
+          chinese: [...data.hints.chinese, "", "", "", "", ""].slice(0, 5),
+          russian: [...data.hints.russian, "", "", "", "", ""].slice(0, 5)
+        });
       }
 
       toast({
@@ -509,7 +548,12 @@ const EmojiPuzzle = () => {
     }
 
     const validEmojis = createEmojis.filter((emoji) => emoji.trim() !== "");
-    const validHints = createHints.filter((hint) => hint.trim() !== "");
+    const validHints = createHints.english.filter((hint) => hint.trim() !== "");
+    
+    // Check if all languages have at least one hint
+    const hasDutchHints = createHints.dutch.some(hint => hint.trim() !== "");
+    const hasChineseHints = createHints.chinese.some(hint => hint.trim() !== "");
+    const hasRussianHints = createHints.russian.some(hint => hint.trim() !== "");
 
     if (validEmojis.length === 0) {
       toast({
@@ -523,7 +567,16 @@ const EmojiPuzzle = () => {
     if (validHints.length === 0) {
       toast({
         title: "Error",
-        description: "Please provide at least one hint",
+        description: "Please provide at least one English hint",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!hasDutchHints || !hasChineseHints || !hasRussianHints) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one hint in all languages (Dutch, Chinese, Russian)",
         variant: "destructive",
       });
       return;
@@ -576,7 +629,12 @@ const EmojiPuzzle = () => {
             EmojiPuzzle: {
               skinId: selectedSkinForCreate.id,
               emojis: validEmojis,
-              hints: validHints,
+              hints: {
+                english: validHints,
+                dutch: createHints.dutch,
+                chinese: createHints.chinese,
+                russian: createHints.russian
+              },
               skin: {
                 id: selectedSkinForCreate.id,
                 name: selectedSkinForCreate.name,
@@ -631,7 +689,7 @@ const EmojiPuzzle = () => {
       setSelectedSkinForCreate(null);
       setIsCreateModalOpen(false);
       setCreateEmojis(["", "", "", "", ""]);
-      setCreateHints(["", "", "", "", ""]);
+      setCreateHints({ english: ["", "", "", "", ""], dutch: ["", "", "", "", ""], chinese: ["", "", "", "", ""], russian: ["", "", "", "", ""] });
 
       toast({
         title: "Success",
@@ -1001,22 +1059,79 @@ const EmojiPuzzle = () => {
 
                 {/* Hints Input */}
                 <div className="space-y-2">
-                  <Label>Hints (up to 5)</Label>
+                  <Label>Hints (up to 5) - English</Label>
                   <div className="space-y-2">
-                    {createHints.map((hint, index) => (
+                    {createHints.english.map((hint, index) => (
                       <Input
                         key={index}
                         placeholder={`Hint ${index + 1}`}
                         value={hint}
                         onChange={(e) => {
-                          const newHints = [...createHints];
-                          newHints[index] = e.target.value;
+                          const newHints = { ...createHints };
+                          newHints.english[index] = e.target.value;
                           setCreateHints(newHints);
                         }}
                       />
                     ))}
                   </div>
                 </div>
+
+                {/* Dutch Hints */}
+                {/* <div className="space-y-2">
+                  <Label>Hints (up to 5) - Dutch</Label>
+                  <div className="space-y-2">
+                    {createHints.dutch.map((hint, index) => (
+                      <Input
+                        key={index}
+                        placeholder={`Hint ${index + 1} (Dutch)`}
+                        value={hint}
+                        onChange={(e) => {
+                          const newHints = { ...createHints };
+                          newHints.dutch[index] = e.target.value;
+                          setCreateHints(newHints);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div> */}
+
+                {/* Chinese Hints */}
+                {/* <div className="space-y-2">
+                  <Label>Hints (up to 5) - Chinese</Label>
+                  <div className="space-y-2">
+                    {createHints.chinese.map((hint, index) => (
+                      <Input
+                        key={index}
+                        placeholder={`Hint ${index + 1} (Chinese)`}
+                        value={hint}
+                        onChange={(e) => {
+                          const newHints = { ...createHints };
+                          newHints.chinese[index] = e.target.value;
+                          setCreateHints(newHints);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div> */}
+
+                {/* Russian Hints */}
+                {/* <div className="space-y-2">
+                  <Label>Hints (up to 5) - Russian</Label>
+                  <div className="space-y-2">
+                    {createHints.russian.map((hint, index) => (
+                      <Input
+                        key={index}
+                        placeholder={`Hint ${index + 1} (Russian)`}
+                        value={hint}
+                        onChange={(e) => {
+                          const newHints = { ...createHints };
+                          newHints.russian[index] = e.target.value;
+                          setCreateHints(newHints);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div> */}
 
                 {/* Action Buttons */}
                 <div className="flex justify-end space-x-2">
@@ -1135,13 +1250,27 @@ const EmojiPuzzle = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       {Array.from({ length: 5 }).map((_, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className="text-xs text-gray-500">
-                            {gameData.emojis[index] || ""} -{" "}
-                            {gameData.hints[index] || ""}
+                        <div key={index} className="space-y-1">
+                          <div className="text-xs text-gray-600 font-medium">
+                            {gameData.emojis[index] || ""} - {gameData.hints?.english?.[index] || ""}
                           </div>
+                          {/* {gameData.hints?.dutch?.[index] && (
+                            <div className="text-xs text-gray-500 ml-4">
+                              🇳🇱 {gameData.hints.dutch[index]}
+                            </div>
+                          )}
+                          {gameData.hints?.chinese?.[index] && (
+                            <div className="text-xs text-gray-500 ml-4">
+                              🇨🇳 {gameData.hints.chinese[index]}
+                            </div>
+                          )}
+                          {gameData.hints?.russian?.[index] && (
+                            <div className="text-xs text-gray-500 ml-4">
+                              🇷🇺 {gameData.hints.russian[index]}
+                            </div>
+                          )} */}
                         </div>
                       ))}
                     </div>
@@ -1578,22 +1707,79 @@ const EmojiPuzzle = () => {
 
               {/* Hints Input */}
               <div className="space-y-2">
-                <Label>Hints (up to 5)</Label>
+                <Label>Hints (up to 5) - English</Label>
                 <div className="space-y-2">
-                  {editHints.map((hint, index) => (
+                  {editHints.english.map((hint, index) => (
                     <Input
                       key={index}
                       placeholder={`Hint ${index + 1}`}
                       value={hint}
                       onChange={(e) => {
-                        const newHints = [...editHints];
-                        newHints[index] = e.target.value;
+                        const newHints = { ...editHints };
+                        newHints.english[index] = e.target.value;
                         setEditHints(newHints);
                       }}
                     />
                   ))}
                 </div>
               </div>
+
+              {/* Dutch Hints */}
+              {/* <div className="space-y-2">
+                <Label>Hints (up to 5) - Dutch</Label>
+                <div className="space-y-2">
+                  {editHints.dutch.map((hint, index) => (
+                    <Input
+                      key={index}
+                      placeholder={`Hint ${index + 1} (Dutch)`}
+                      value={hint}
+                      onChange={(e) => {
+                        const newHints = { ...editHints };
+                        newHints.dutch[index] = e.target.value;
+                        setEditHints(newHints);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Chinese Hints */}
+              {/* <div className="space-y-2">
+                <Label>Hints (up to 5) - Chinese</Label>
+                <div className="space-y-2">
+                  {editHints.chinese.map((hint, index) => (
+                    <Input
+                      key={index}
+                      placeholder={`Hint ${index + 1} (Chinese)`}
+                      value={hint}
+                      onChange={(e) => {
+                        const newHints = { ...editHints };
+                        newHints.chinese[index] = e.target.value;
+                        setEditHints(newHints);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div> */}
+
+              {/* Russian Hints */}
+              {/* <div className="space-y-2">
+                <Label>Hints (up to 5) - Russian</Label>
+                <div className="space-y-2">
+                  {editHints.russian.map((hint, index) => (
+                    <Input
+                      key={index}
+                      placeholder={`Hint ${index + 1} (Russian)`}
+                      value={hint}
+                      onChange={(e) => {
+                        const newHints = { ...editHints };
+                        newHints.russian[index] = e.target.value;
+                        setEditHints(newHints);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div> */}
 
               {/* Action Buttons */}
               <div className="flex justify-end space-x-2">

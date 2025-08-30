@@ -39,8 +39,8 @@ export async function POST(request: Request) {
                     - Emoji 2: Secondary theme from skin name. If theme from name not possible use pattern, or related element from the skin name.  
                         • If the skin name contains two words (e.g., "Fire Serpent"), use one emoji for each word (e.g., "Fire" → 🔥, "Serpent" → 🐍)  
                         • If the skin name is a single word that can logically be split into two parts (e.g., "Redline" → "Red" + "Line"), use emojis that reflect both parts (e.g., 🟥 and ➖)  
-                    - Emoji 3: A visual or material clue that reflects how the skin looks, what it’s made of, or what the description implies.  Avoid repeating anything already shown in Emoji 1 or 2.
-                    Use this emoji to hint at the texture, material, or construction style — or a key detail from the skin’s in-game description.
+                    - Emoji 3: A visual or material clue that reflects how the skin looks, what it's made of, or what the description implies.  Avoid repeating anything already shown in Emoji 1 or 2.
+                    Use this emoji to hint at the texture, material, or construction style — or a key detail from the skin's in-game description.
 
                     Emoji 4: Rarity/Category indicator, based on in-game color coding. The emoji should represent the color of the rarity, and the hint should clearly state the rarity name. No metaphors or abstract phrases allowed here — only the direct name of the rarity.
                     • Consumer Grade (light gray) → ⚪ → Hint: "Consumer Grade"
@@ -61,7 +61,8 @@ export async function POST(request: Request) {
                       • LMGs (M249, Negev) → 🛡️  
 
                     HINTS:  
-                    For each emoji, provide a short hint that helps players understand the connection:
+                    For each emoji, provide hints in FOUR languages: English, Dutch, Chinese, and Russian.
+                    
                     - Emoji 1-3, 5: Use **indirect** hints **without using any words from the skin name, description, or weapon name**. Use abstract ideas, metaphors, emotional tone, visual impressions, or color associations. Avoid literal terms or direct mentions.
                     - Emoji 4: Use the **exact rarity name** as specified in the mapping above (e.g., "Consumer Grade", "Industrial Grade", "Mil-Spec", etc.). This is the only emoji that should use direct, literal terms.
                        
@@ -70,15 +71,19 @@ export async function POST(request: Request) {
                     Return the response in this **exact JSON format**:
                     {
                       "emojis": ["🔥", "🐍", "✨", "🔴", "💥"],
-                      "hints": ["Dangerous element", "Wild creature", "Shiny surface", "Top-tier rarity", "High-impact weapon"]
-                    }`
-                    ;
+                      "hints": {
+                        "english": ["Dangerous element", "Wild creature", "Shiny surface", "Covert", "High-impact weapon"],
+                        "dutch": ["Gevaarlijk element", "Wild dier", "Glimmend oppervlak", "Covert", "Hoog-impact wapen"],
+                        "chinese": ["危险元素", "野生动物", "闪亮表面", "隐秘级", "高冲击武器"],
+                        "russian": ["Опасный элемент", "Дикое существо", "Блестящая поверхность", "Скрытый", "Высокоударное оружие"]
+                      }
+                    }`;
 
     const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
       model: 'gpt-4o',
       temperature: 0.7,
-      max_tokens: 300,
+      max_tokens: 500,
     });
 
     const responseContent = completion.choices[0].message.content;
@@ -102,20 +107,59 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error('Failed to parse OpenAI response:', error);
       console.error('Response content:', responseContent);
-      // Fallback to default response
+      // Fallback to default response with multilingual hints
       response = {
         emojis: ['🔥', '⭐', '🎨', '💎', '💥'],
-        hints: [
-          'This emoji represents the skin\'s main theme',
-          'This emoji indicates the rarity level',
-          'This emoji shows the visual pattern',
-          'This emoji represents special features',
-          'This emoji represents the weapon type'
-        ]
+        hints: {
+          english: [
+            'This emoji represents the skin\'s main theme',
+            'This emoji indicates the rarity level',
+            'This emoji shows the visual pattern',
+            'This emoji represents special features',
+            'This emoji represents the weapon type'
+          ],
+          dutch: [
+            'Dit emoji vertegenwoordigt het hoofdthema van de skin',
+            'Dit emoji geeft het zeldzaamheidsniveau aan',
+            'Dit emoji toont het visuele patroon',
+            'Dit emoji vertegenwoordigt speciale kenmerken',
+            'Dit emoji vertegenwoordigt het wapentype'
+          ],
+          chinese: [
+            '这个表情符号代表皮肤的主要主题',
+            '这个表情符号表示稀有度等级',
+            '这个表情符号显示视觉图案',
+            '这个表情符号代表特殊特征',
+            '这个表情符号代表武器类型'
+          ],
+          russian: [
+            'Этот эмодзи представляет основную тему скина',
+            'Этот эмодзи указывает на уровень редкости',
+            'Этот эмодзи показывает визуальный узор',
+            'Этот эмодзи представляет особые черты',
+            'Этот эмодзи представляет тип оружия'
+          ]
+        }
       };
     }
 
-    const { emojis = [], hints = [] } = response;
+    const { emojis = [], hints = {} } = response;
+
+    // Ensure all required languages are present
+    const requiredLanguages = ['english', 'dutch', 'chinese', 'russian'] as const;
+    const defaultHints = {
+      english: ['Theme', 'Rarity', 'Pattern', 'Features', 'Weapon'],
+      dutch: ['Thema', 'Zeldzaamheid', 'Patroon', 'Kenmerken', 'Wapen'],
+      chinese: ['主题', '稀有度', '图案', '特征', '武器'],
+      russian: ['Тема', 'Редкость', 'Узор', 'Особенности', 'Оружие']
+    };
+
+    // Fill missing languages with default hints
+    requiredLanguages.forEach(lang => {
+      if (!hints[lang] || !Array.isArray(hints[lang])) {
+        hints[lang] = defaultHints[lang];
+      }
+    });
 
     return NextResponse.json({ emojis, hints });
   } catch (error) {
@@ -124,13 +168,36 @@ export async function POST(request: Request) {
       { 
         error: 'Failed to generate emojis',
         emojis: ['🔥', '⭐', '🎨', '💎', '💥'],
-        hints: [
-          'This emoji represents the skin\'s main theme',
-          'This emoji indicates the rarity level',
-          'This emoji shows the visual pattern',
-          'This emoji represents special features',
-          'This emoji represents the explosive nature of the skin'
-        ]
+        hints: {
+          english: [
+            'This emoji represents the skin\'s main theme',
+            'This emoji indicates the rarity level',
+            'This emoji shows the visual pattern',
+            'This emoji represents special features',
+            'This emoji represents the explosive nature of the skin'
+          ],
+          dutch: [
+            'Dit emoji vertegenwoordigt het hoofdthema van de skin',
+            'Dit emoji geeft het zeldzaamheidsniveau aan',
+            'Dit emoji toont het visuele patroon',
+            'Dit emoji vertegenwoordigt speciale kenmerken',
+            'Dit emoji vertegenwoordigt de explosieve aard van de skin'
+          ],
+          chinese: [
+            '这个表情符号代表皮肤的主要主题',
+            '这个表情符号表示稀有度等级',
+            '这个表情符号显示视觉图案',
+            '这个表情符号代表特殊特征',
+            '这个表情符号代表皮肤的爆炸性质'
+          ],
+          russian: [
+            'Этот эмодзи представляет основную тему скина',
+            'Этот эмодзи указывает на уровень редкости',
+            'Этот эмодзи показывает визуальный узор',
+            'Этот эмодзи представляет особые черты',
+            'Этот эмодзи представляет взрывной характер скина'
+          ]
+        }
       },
       { status: 500 }
     );
