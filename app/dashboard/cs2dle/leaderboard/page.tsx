@@ -223,7 +223,7 @@ const LeaderboardPage = () => {
             <>
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="text-xs">
                     <TableHead className="w-16">Rank</TableHead>
                     <TableHead>Player</TableHead>
                     <TableHead className="text-center">Best Streak</TableHead>
@@ -231,8 +231,9 @@ const LeaderboardPage = () => {
                       Current Streak
                     </TableHead>
                     <TableHead className="text-center">Games Played</TableHead>
-                    <TableHead className="text-center">Total points</TableHead>
+                    <TableHead className="text-center">Correct guesses</TableHead>
                     <TableHead className="text-center">Win Rate</TableHead>
+                    <TableHead className="text-center">Total points</TableHead>
                     <TableHead className="text-center">
                       Prize (Click to change)
                     </TableHead>
@@ -277,12 +278,7 @@ const LeaderboardPage = () => {
                         <span className="font-mono">{entry.guesses}</span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className="font-mono bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800"
-                        >
-                          {entry.score.toLocaleString()}
-                        </Badge>
+                        <span className="font-mono">{entry.tickets}</span>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
@@ -290,6 +286,14 @@ const LeaderboardPage = () => {
                           className="font-mono bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800"
                         >
                           {(entry.winRate * 100).toFixed(1)}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className="font-mono bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800"
+                        >
+                          {entry.score.toLocaleString()}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
