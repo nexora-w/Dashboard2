@@ -60,9 +60,11 @@ interface LeaderboardEntry {
   bestStreak: number;
   currentStreak: number;
   guesses: number;
+  score: number;
   tickets: number;
-  prize: Prize | null;
-  allPrizes: AvailablePrize[];
+  winRate: number;
+  prizes: Prize[];
+  allPrizes?: AvailablePrize[];
 }
 
 interface PaginationInfo {
@@ -174,7 +176,7 @@ const LeaderboardPage = () => {
 
   const getDisplayPrize = (entry: LeaderboardEntry): Prize | null => {
     // Only show prizes where isShow is true
-    const showPrize = entry.allPrizes.find((prize) => prize.isShow === true);
+    const showPrize = entry.allPrizes?.find((prize) => prize.isShow === true);
     if (showPrize) {
       return {
         name: showPrize.name,
@@ -216,7 +218,7 @@ const LeaderboardPage = () => {
         />
       </div>
       <Card>
-        <CardContent>
+        <CardContent className="!p-0">
           {data && (
             <>
               <Table>
@@ -229,7 +231,8 @@ const LeaderboardPage = () => {
                       Current Streak
                     </TableHead>
                     <TableHead className="text-center">Games Played</TableHead>
-                    <TableHead className="text-center">Tickets</TableHead>
+                    <TableHead className="text-center">Total points</TableHead>
+                    <TableHead className="text-center">Win Rate</TableHead>
                     <TableHead className="text-center">
                       Prize (Click to change)
                     </TableHead>
@@ -276,16 +279,24 @@ const LeaderboardPage = () => {
                       <TableCell className="text-center">
                         <Badge
                           variant="outline"
-                          className="font-mono bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800"
+                          className="font-mono bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800"
                         >
-                          {entry.tickets}
+                          {entry.score.toLocaleString()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className="font-mono bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800"
+                        >
+                          {(entry.winRate * 100).toFixed(1)}%
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         {entry.allPrizes && entry.allPrizes.length > 0 ? (
                           <div className="flex flex-col items-center gap-2">
                             <div className="flex flex-col items-center gap-1">
-                              {entry.allPrizes.length > 1 && (
+                              {entry.allPrizes && entry.allPrizes.length > 1 && (
                                 <div className="flex items-center gap-1">
                                   <Select
                                     value={selectedPrizes[entry.user._id] || ""}
@@ -312,7 +323,7 @@ const LeaderboardPage = () => {
                                             <div className="flex flex-col items-start gap-1">
                                               <span className="text-sm text-muted-foreground truncate max-w-32 text-center">
                                                 {getDisplayPrize(entry)?.name || "Unknown"}
-                                                {entry.allPrizes.length > 1 && (
+                                                {entry.allPrizes && entry.allPrizes.length > 1 && (
                                                   <span className="ml-1 text-xs text-blue-500">
                                                     ({entry.allPrizes.length})
                                                   </span>
@@ -335,7 +346,7 @@ const LeaderboardPage = () => {
                                       </div>
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {entry.allPrizes.map((prize, index) => (
+                                      {entry.allPrizes?.map((prize, index) => (
                                         <SelectItem
                                           key={index}
                                           value={index.toString()}
@@ -391,16 +402,7 @@ const LeaderboardPage = () => {
 
               {/* Pagination */}
               {data.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6">
-                  <div className="text-sm text-muted-foreground">
-                    Showing{" "}
-                    {(data.pagination.page - 1) * data.pagination.limit + 1} to{" "}
-                    {Math.min(
-                      data.pagination.page * data.pagination.limit,
-                      data.pagination.total
-                    )}{" "}
-                    of {data.pagination.total} results
-                  </div>
+                <div className="flex items-center justify-center mt-6 mb-4">
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
