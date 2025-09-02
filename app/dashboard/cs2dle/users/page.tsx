@@ -442,7 +442,13 @@ const UsersPage = () => {
 
           {/* Pagination */}
           {data?.pagination.totalPages && data.pagination.totalPages > 1 && (
-            <div className="mt-8">
+            <div className="mt-8 space-y-4">
+              {/* Pagination Info */}
+              <div className="text-center text-sm text-muted-foreground">
+                Showing page {data.pagination.page} of {data.pagination.totalPages} 
+                ({data.pagination.total} total users)
+              </div>
+              
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
@@ -462,32 +468,61 @@ const UsersPage = () => {
                     />
                   </PaginationItem>
 
-                  {Array.from(
-                    { length: Math.min(5, data.pagination.totalPages) },
-                    (_, i) => {
-                      const pageNum = i + 1;
+                  {/* Generate page numbers with proper range logic */}
+                  {(() => {
+                    const currentPage = data.pagination.page;
+                    const totalPages = data.pagination.totalPages;
+                    const pages = [];
+                    
+                    // Always show first page
+                    if (currentPage > 3) {
+                      pages.push(1);
+                      if (currentPage > 4) {
+                        pages.push('ellipsis-start');
+                      }
+                    }
+                    
+                    // Show pages around current page
+                    const startPage = Math.max(1, currentPage - 2);
+                    const endPage = Math.min(totalPages, currentPage + 2);
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(i);
+                    }
+                    
+                    // Always show last page
+                    if (currentPage < totalPages - 2) {
+                      if (currentPage < totalPages - 3) {
+                        pages.push('ellipsis-end');
+                      }
+                      pages.push(totalPages);
+                    }
+                    
+                    return pages.map((page, index) => {
+                      if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                        return (
+                          <PaginationItem key={`ellipsis-${index}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+                      
                       return (
-                        <PaginationItem key={pageNum}>
+                        <PaginationItem key={page}>
                           <PaginationLink
                             href="#"
                             onClick={(e) => {
                               e.preventDefault();
-                              setCurrentPage(pageNum);
+                              setCurrentPage(page as number);
                             }}
-                            isActive={pageNum === data.pagination.page}
+                            isActive={page === currentPage}
                           >
-                            {pageNum}
+                            {page}
                           </PaginationLink>
                         </PaginationItem>
                       );
-                    }
-                  )}
-
-                  {data.pagination.totalPages > 5 && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )}
+                    });
+                  })()}
 
                   <PaginationItem>
                     <PaginationNext

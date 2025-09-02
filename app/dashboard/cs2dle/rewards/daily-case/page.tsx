@@ -30,19 +30,19 @@ const DailyCase = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="items" className="w-full">
+      <Tabs defaultValue="users" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6 md:w-1/2 mx-auto">
-          <TabsTrigger value="items">Items</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="items">Items</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="items">
-          <ItemsTab />
-        </TabsContent>
         
         <TabsContent value="users">
           <UsersTab />
         </TabsContent>
+        <TabsContent value="items">
+          <ItemsTab />
+        </TabsContent>
+        
       </Tabs>
     </div>
   );
