@@ -36,6 +36,8 @@ interface User {
   bestStreak?: number;
   currentStreak?: number;
   gamesPlayed?: number;
+  score?: number;
+  winRate?: number;
 }
 
 interface SelectWinnersModalProps {
@@ -69,8 +71,8 @@ const SelectWinnersModal = ({
       setLoading(true);
       setError(null);
       
-      // Fetch top 10 users sorted by best streak and games played
-      const response = await fetch('/api/cs2dle/users/all?limit=10');
+      // Fetch top 10 users sorted by score and win rate
+      const response = await fetch('/api/cs2dle/users/top-by-performance?limit=10');
       
       if (!response.ok) {
         throw new Error('Failed to fetch users');
@@ -79,20 +81,7 @@ const SelectWinnersModal = ({
       const result = await response.json();
       
       if (result.success) {
-        // Sort users by best streak (desc) and games played (desc)
-        const sortedUsers = (result.data || []).sort((a: User, b: User) => {
-          const aStreak = a.bestStreak || 0;
-          const bStreak = b.bestStreak || 0;
-          const aGames = a.gamesPlayed || 0;
-          const bGames = b.gamesPlayed || 0;
-          
-          if (bStreak !== aStreak) {
-            return bStreak - aStreak;
-          }
-          return bGames - aGames;
-        });
-        
-        setUsers(sortedUsers.slice(0, 10)); // Ensure only top 10
+        setUsers(result.data || []);
       } else {
         throw new Error(result.message || 'Failed to fetch users');
       }
@@ -175,7 +164,7 @@ const SelectWinnersModal = ({
           </DialogTitle>
           <DialogDescription>
             Choose one user from the top 10 performers to award the weekly prize. 
-            Users are ranked by best streak and games played.
+            Users are ranked by score and win rate.
           </DialogDescription>
         </DialogHeader>
 
@@ -273,7 +262,10 @@ const SelectWinnersModal = ({
                     <div className="text-right space-y-1">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="text-xs">
-                          Streak: {user.bestStreak || 0}
+                          Score: {user.score || 0}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Win Rate: {((user.winRate || 0) * 100).toFixed(1)}%
                         </Badge>
                       </div>
                       <div className="text-xs text-gray-500">

@@ -505,33 +505,30 @@ const UsersTab = () => {
                           )}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant={dailyCase.active ? "destructive" : "default"}
-                        onClick={() =>
-                          handleToggleDailyCase(
-                            user._id,
-                            dailyCase.id,
-                            !dailyCase.active
-                          )
-                        }
-                        disabled={updatingUsers.has(user._id)}
-                        className="ml-2"
-                      >
-                        {updatingUsers.has(user._id) ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : dailyCase.active ? (
-                          <>
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Activate
-                          </>
-                        )}
-                      </Button>
+                      {!dailyCase.active && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() =>
+                            handleToggleDailyCase(
+                              user._id,
+                              dailyCase.id,
+                              !dailyCase.active
+                            )
+                          }
+                          disabled={updatingUsers.has(user._id)}
+                          className="ml-2"
+                        >
+                          {updatingUsers.has(user._id) ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Sent
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -745,32 +742,29 @@ const UsersTab = () => {
                               Case #{index + 1}
                             </span>
                           </div>
-                          <Button
-                            size="sm"
-                            variant={dailyCase.active ? "destructive" : "default"}
-                            onClick={() =>
-                              handleToggleDailyCase(
-                                selectedUser._id,
-                                dailyCase.id,
-                                !dailyCase.active
-                              )
-                            }
-                            disabled={updatingUsers.has(selectedUser._id)}
-                          >
-                            {updatingUsers.has(selectedUser._id) ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : dailyCase.active ? (
-                              <>
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Deactivate
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Activate
-                              </>
-                            )}
-                          </Button>
+                          {!dailyCase.active && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() =>
+                                handleToggleDailyCase(
+                                  selectedUser._id,
+                                  dailyCase.id,
+                                  !dailyCase.active
+                                )
+                              }
+                              disabled={updatingUsers.has(selectedUser._id)}
+                            >
+                              {updatingUsers.has(selectedUser._id) ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Sent
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
 
                         {/* Item Details */}

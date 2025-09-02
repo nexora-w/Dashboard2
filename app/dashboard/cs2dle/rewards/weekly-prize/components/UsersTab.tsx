@@ -365,33 +365,30 @@ const UsersTab = () => {
                           )}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant={weeklyPrize.active ? "destructive" : "default"}
-                        onClick={() =>
-                          handleToggleWeeklyPrize(
-                            user._id,
-                            weeklyPrize.id,
-                            !weeklyPrize.active
-                          )
-                        }
-                        disabled={updatingUsers.has(user._id)}
-                        className="ml-2"
-                      >
-                        {updatingUsers.has(user._id) ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : weeklyPrize.active ? (
-                          <>
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Activate
-                          </>
-                        )}
-                      </Button>
+                      {!weeklyPrize.active && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() =>
+                            handleToggleWeeklyPrize(
+                              user._id,
+                              weeklyPrize.id,
+                              !weeklyPrize.active
+                            )
+                          }
+                          disabled={updatingUsers.has(user._id)}
+                          className="ml-2"
+                        >
+                          {updatingUsers.has(user._id) ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Sent
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   ))
                 ) : (
