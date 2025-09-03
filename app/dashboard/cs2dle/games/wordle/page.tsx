@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, PlusIcon, Loader2, Search, ChevronDown, X, CalendarIcon, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { CS2_WORDS } from "@/data/wordle";
+// Removed static import - now fetching from database
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal, ModalContent, ModalDescription, ModalHeader, ModalTitle, ModalTrigger } from "@/components/ui/modal";
@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useWordleData } from "@/components/WordleDataProvider";
 
 interface WordleAnswer {
   _id: string;
@@ -31,9 +32,16 @@ interface WordleAnswer {
   updatedAt?: string;
 }
 
+interface WordleWord {
+  _id: string;
+  word: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+}
+
 const WordlePage = () => {
-  const [answers, setAnswers] = useState<WordleAnswer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { answers, words, loading, refreshAnswers, refreshWords } = useWordleData();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedWord, setSelectedWord] = useState("");
@@ -64,62 +72,55 @@ const WordlePage = () => {
   // View all words modal state
   const [isViewAllWordsModalOpen, setIsViewAllWordsModalOpen] = useState(false);
   const [allWordsSearchQuery, setAllWordsSearchQuery] = useState("");
-  const [allWordsFiltered, setAllWordsFiltered] = useState<string[]>([]);
+  const [allWordsFiltered, setAllWordsFiltered] = useState<WordleWord[]>([]);
 
-  useEffect(() => {
-    const fetchAnswers = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/cs2dle/games/answers?gameType=Wordle");
-        if (response.ok) {
-          const data = await response.json();
-          setAnswers(data.answers || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch answers:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Add word modal state
+  const [isAddWordModalOpen, setIsAddWordModalOpen] = useState(false);
+  const [newWord, setNewWord] = useState("");
+  const [isAddingWord, setIsAddingWord] = useState(false);
 
-    fetchAnswers();
-  }, []);
+  // Delete word modal state
+  const [isDeleteWordModalOpen, setIsDeleteWordModalOpen] = useState(false);
+  const [deletingWord, setDeletingWord] = useState<WordleWord | null>(null);
+  const [isDeletingWord, setIsDeletingWord] = useState(false);
+
+
 
   // Filter words based on search query
   useEffect(() => {
     if (searchQuery.trim() === "") {
-      setFilteredWords(CS2_WORDS.slice(0, 50)); // Show first 50 words when no search
+      setFilteredWords(words.slice(0, 50).map(w => w.word)); // Show first 50 words when no search
     } else {
-      const filtered = CS2_WORDS.filter(word =>
-        word.toLowerCase().includes(searchQuery.toLowerCase())
+      const filtered = words.filter(word =>
+        word.word.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredWords(filtered.slice(0, 100)); // Limit to 100 results for performance
+      setFilteredWords(filtered.slice(0, 100).map(w => w.word)); // Limit to 100 results for performance
     }
-  }, [searchQuery]);
+  }, [searchQuery, words]);
 
   // Filter words for edit modal based on search query
   useEffect(() => {
     if (editSearchQuery.trim() === "") {
-      setEditFilteredWords(CS2_WORDS.slice(0, 50)); // Show first 50 words when no search
+      setEditFilteredWords(words.slice(0, 50).map(w => w.word)); // Show first 50 words when no search
     } else {
-      const filtered = CS2_WORDS.filter(word =>
-        word.toLowerCase().includes(editSearchQuery.toLowerCase())
+      const filtered = words.filter(word =>
+        word.word.toLowerCase().includes(editSearchQuery.toLowerCase())
       );
-      setEditFilteredWords(filtered.slice(0, 100)); // Limit to 100 results for performance
+      setEditFilteredWords(filtered.slice(0, 100).map(w => w.word)); // Limit to 100 results for performance
     }
-  }, [editSearchQuery]);
+  }, [editSearchQuery, words]);
 
   // Filter all words based on search query
   useEffect(() => {
     if (allWordsSearchQuery.trim() === "") {
-      setAllWordsFiltered(CS2_WORDS);
+      setAllWordsFiltered(words);
     } else {
-      const filtered = CS2_WORDS.filter(word =>
-        word.toLowerCase().includes(allWordsSearchQuery.toLowerCase())
+      const filtered = words.filter(word =>
+        word.word.toLowerCase().includes(allWordsSearchQuery.toLowerCase())
       );
       setAllWordsFiltered(filtered);
     }
-  }, [allWordsSearchQuery]);
+  }, [allWordsSearchQuery, words]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -168,11 +169,7 @@ const WordlePage = () => {
       });
 
       // Refresh the answers list
-      const refreshResponse = await fetch("/api/cs2dle/games/answers?gameType=Wordle");
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json();
-        setAnswers(data.answers || []);
-      }
+      await refreshAnswers();
 
       // Reset form
       setIsCreateModalOpen(false);
@@ -263,11 +260,7 @@ const WordlePage = () => {
       });
 
       // Refresh the answers list
-      const refreshResponse = await fetch("/api/cs2dle/games/answers?gameType=Wordle");
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json();
-        setAnswers(data.answers || []);
-      }
+      await refreshAnswers();
 
       // Reset edit form
       setIsEditModalOpen(false);
@@ -313,11 +306,7 @@ const WordlePage = () => {
       });
 
       // Refresh the answers list
-      const refreshResponse = await fetch("/api/cs2dle/games/answers?gameType=Wordle");
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json();
-        setAnswers(data.answers || []);
-      }
+      await refreshAnswers();
 
       // Reset delete form
       setIsDeleteModalOpen(false);
@@ -330,6 +319,100 @@ const WordlePage = () => {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleAddWord = async () => {
+    if (!newWord.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a word",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsAddingWord(true);
+
+      const response = await fetch("/api/cs2dle/games/words", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          word: newWord.trim().toUpperCase(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to add word");
+      }
+
+      toast({
+        title: "Success",
+        description: "Word added successfully",
+      });
+
+      // Refresh the words list
+      await refreshWords();
+
+      // Reset form
+      setIsAddWordModalOpen(false);
+      setNewWord("");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to add word";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingWord(false);
+    }
+  };
+
+  const handleDeleteWord = (word: WordleWord) => {
+    setDeletingWord(word);
+    setIsDeleteWordModalOpen(true);
+  };
+
+  const confirmDeleteWord = async () => {
+    if (!deletingWord) return;
+
+    try {
+      setIsDeletingWord(true);
+
+      const response = await fetch(`/api/cs2dle/games/words/${deletingWord._id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete word");
+      }
+
+      toast({
+        title: "Success",
+        description: "Word deleted successfully",
+      });
+
+      // Refresh the words list
+      await refreshWords();
+
+      // Reset delete form
+      setIsDeleteWordModalOpen(false);
+      setDeletingWord(null);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete word";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingWord(false);
     }
   };
 
@@ -372,18 +455,27 @@ const WordlePage = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Daily Answers</h2>
         <div className="flex gap-2">
+          <Modal open={isAddWordModalOpen} onOpenChange={setIsAddWordModalOpen}>
+            <ModalTrigger asChild>
+              <Button variant="outline">
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Word
+              </Button>
+            </ModalTrigger>
+          </Modal>
+          
           <Modal open={isViewAllWordsModalOpen} onOpenChange={setIsViewAllWordsModalOpen}>
             <ModalTrigger asChild>
               <Button variant="outline">
                 <Search className="h-4 w-4 mr-2" />
-                View All Words
+                View All Words ({words.length})
               </Button>
             </ModalTrigger>
             <ModalContent className="max-w-4xl max-h-[80vh]">
               <ModalHeader>
                 <ModalTitle>All Available Words</ModalTitle>
                 <ModalDescription>
-                  Browse and search through all {CS2_WORDS.length} available words for Wordle.
+                  Browse and search through all {words.length} available words for Wordle.
                 </ModalDescription>
               </ModalHeader>
               <div className="space-y-4">
@@ -415,13 +507,24 @@ const WordlePage = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                       {allWordsFiltered.map((word, index) => (
                         <div
-                          key={index}
-                          className="p-2 text-sm border rounded hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-center"
+                          key={word._id}
+                          className="p-2 text-sm border rounded hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-center group relative"
                           onClick={() => {
-                            setAllWordsSearchQuery(word);
+                            setAllWordsSearchQuery(word.word);
                           }}
                         >
-                          {word}
+                          {word.word}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute -top-1 -right-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteWord(word);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -533,7 +636,7 @@ const WordlePage = () => {
                       <div className="p-2 border-b border-border">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Search className="h-4 w-4" />
-                          <span>Type to search through {CS2_WORDS.length} words</span>
+                          <span>Type to search through {words.length} words</span>
                         </div>
                       </div>
                       <div className="max-h-48 overflow-auto">
@@ -557,7 +660,7 @@ const WordlePage = () => {
                       </div>
                       {searchQuery.trim() === "" && (
                         <div className="p-2 border-t border-border text-xs text-muted-foreground text-center">
-                          Showing first 50 words. Type to search all {CS2_WORDS.length} words.
+                          Showing first 50 words. Type to search all {words.length} words.
                         </div>
                       )}
                     </div>
@@ -678,7 +781,7 @@ const WordlePage = () => {
                     <div className="p-2 border-b border-border">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Search className="h-4 w-4" />
-                        <span>Type to search through {CS2_WORDS.length} words</span>
+                        <span>Type to search through {words.length} words</span>
                       </div>
                     </div>
                     <div className="max-h-48 overflow-auto">
@@ -702,7 +805,7 @@ const WordlePage = () => {
                     </div>
                     {editSearchQuery.trim() === "" && (
                       <div className="p-2 border-t border-border text-xs text-muted-foreground text-center">
-                        Showing first 50 words. Type to search all {CS2_WORDS.length} words.
+                        Showing first 50 words. Type to search all {words.length} words.
                       </div>
                     )}
                   </div>
@@ -755,6 +858,76 @@ const WordlePage = () => {
             >
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete Answer
+            </Button>
+          </div>
+        </ModalContent>
+      </Modal>
+
+      {/* Add Word Modal */}
+      <Modal open={isAddWordModalOpen} onOpenChange={setIsAddWordModalOpen}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Add New Word</ModalTitle>
+            <ModalDescription>
+              Add a new 5-letter word to the Wordle word list.
+            </ModalDescription>
+          </ModalHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="newWord">Word</Label>
+              <Input
+                id="newWord"
+                placeholder="Enter 5-letter word (e.g., HELLO)"
+                value={newWord}
+                onChange={(e) => setNewWord(e.target.value.toUpperCase())}
+                maxLength={5}
+                className="uppercase"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Word must be exactly 5 letters long.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsAddWordModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleAddWord} disabled={isAddingWord || newWord.length !== 5}>
+                {isAddingWord && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add Word
+              </Button>
+            </div>
+          </div>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Word Confirmation Modal */}
+      <Modal open={isDeleteWordModalOpen} onOpenChange={setIsDeleteWordModalOpen}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Delete Word</ModalTitle>
+            <ModalDescription>
+              Are you sure you want to delete the word "{deletingWord?.word}"?
+              This action cannot be undone.
+            </ModalDescription>
+          </ModalHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteWordModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDeleteWord} 
+              disabled={isDeletingWord}
+            >
+              {isDeletingWord && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Word
             </Button>
           </div>
         </ModalContent>
