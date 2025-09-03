@@ -205,6 +205,18 @@ export async function GET(request: Request) {
       const gamesPlayed = user.gamesPlayed || 0;
       const winRate = gamesPlayed > 0 ? tickets / gamesPlayed : 0;
 
+      // Create allPrizes array for the dropdown
+      const allPrizes = prizes
+        .filter(prize => prize.weeklyPrize)
+        .map(prize => ({
+          id: prize.id,
+          name: prize.weeklyPrize!.name || "Unknown Skin",
+          image: prize.weeklyPrize!.image || "/placeholder.jpg",
+          price: prize.weeklyPrize!.price || 0,
+          rarity: prize.weeklyPrize!.rarity || { name: "Common", color: "#8B8B8B" },
+          isShow: prize.isShow === true // Ensure boolean conversion
+        }));
+
       return {
         position: skip + index + 1, // Calculate global position
         user: {
@@ -219,6 +231,7 @@ export async function GET(request: Request) {
         tickets: tickets,
         winRate: parseFloat(winRate.toFixed(2)), // Round to 2 decimal places
         prizes: defaultPrize ? [defaultPrize] : [mostExpensivePrize], // Return only the most expensive prize
+        allPrizes: allPrizes, // Add all prizes for dropdown selection
       };
     });
 

@@ -100,7 +100,7 @@ const LeaderboardPage = () => {
         `/api/cs2dle/leaderboard?page=${page}&limit=10`
       );
       const result: LeaderboardResponse = await response.json();
-
+      console.log(result);
       if (result.success) {
         setData(result);
       } else {
@@ -175,7 +175,7 @@ const LeaderboardPage = () => {
   };
 
   const getDisplayPrize = (entry: LeaderboardEntry): Prize | null => {
-    // Only show prizes where isShow is true
+    // First try to find a prize marked as show
     const showPrize = entry.allPrizes?.find((prize) => prize.isShow === true);
     if (showPrize) {
       return {
@@ -184,7 +184,16 @@ const LeaderboardPage = () => {
       };
     }
 
-    // If no prize has isShow: true, return null
+    // If no prize has isShow: true, fall back to the first available prize
+    const firstPrize = entry.allPrizes?.[0];
+    if (firstPrize) {
+      return {
+        name: firstPrize.name,
+        image: firstPrize.image,
+      };
+    }
+
+    // If no prizes exist at all, return null
     return null;
   };
 
@@ -418,25 +427,33 @@ const LeaderboardPage = () => {
                       Previous
                     </Button>
                     <div className="flex items-center gap-1">
-                      {Array.from(
-                        { length: Math.min(5, data.pagination.totalPages) },
-                        (_, i) => {
-                          const pageNum = i + 1;
-                          return (
+                      {(() => {
+                        const totalPages = data.pagination.totalPages;
+                        const maxVisiblePages = 5;
+                        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                        
+                        // Adjust start page if we're near the end
+                        if (endPage - startPage + 1 < maxVisiblePages) {
+                          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                        }
+                        
+                        const pages = [];
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
                             <Button
-                              key={pageNum}
-                              variant={
-                                pageNum === currentPage ? "default" : "outline"
-                              }
+                              key={i}
+                              variant={i === currentPage ? "default" : "outline"}
                               size="sm"
-                              onClick={() => setCurrentPage(pageNum)}
+                              onClick={() => setCurrentPage(i)}
                               className="w-8 h-8 p-0"
                             >
-                              {pageNum}
+                              {i}
                             </Button>
                           );
                         }
-                      )}
+                        return pages;
+                      })()}
                     </div>
                     <Button
                       variant="outline"
