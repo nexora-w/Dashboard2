@@ -105,6 +105,8 @@ const UsersTab = () => {
 
       if (result.success) {
         setUsers(result.data);
+        console.log(result.data);
+        
       } else {
         setError("Failed to fetch users");
       }
@@ -224,20 +226,32 @@ const UsersTab = () => {
     }
   };
 
-  // Filter users based on toggle state
-  const filteredUsers = users.filter((user) => {
+  // Filter users and their daily cases based on toggle state
+  const filteredUsers = users.map((user) => {
     if (!showZeroPrizes) {
-      // When toggle is off, hide users with $0 prizes
-      return !user.dailyCase?.some((dailyCase) => 
-        dailyCase.precase?.price === 0 || dailyCase.precase?.price === undefined
-      );
+      // When toggle is off, filter out $0 prizes from each user's daily cases
+      const filteredDailyCases = user.dailyCase?.filter((dailyCase) => 
+        dailyCase.precase?.price !== 0 && dailyCase.precase?.price !== undefined
+      ) || [];
+      
+      return {
+        ...user,
+        dailyCase: filteredDailyCases
+      };
+    }
+    // When toggle is on, show all users with all their daily cases
+    return user;
+  }).filter((user) => {
+    if (!showZeroPrizes) {
+      // Hide users who have no daily cases after filtering out $0 prizes
+      return user.dailyCase && user.dailyCase.length > 0;
     }
     // When toggle is on, show all users
     return true;
   });
 
   // Calculate statistics for filtered users
-  const totalUsers = filteredUsers.length;
+  const totalUsers = users.length; // Always show total users count
   const totalDailyCases = filteredUsers.reduce(
     (sum, user) => sum + (user.dailyCase?.length || 0),
     0
@@ -305,7 +319,10 @@ const UsersTab = () => {
           </Label>
         </div>
         <div className="text-sm text-muted-foreground">
-          Showing {filteredUsers.length} of {users.length} users
+          {showZeroPrizes 
+            ? `Showing all ${users.length} users` 
+            : `Showing ${filteredUsers.length} of ${users.length} users (hiding $0 prizes and users with only $0 prizes)`
+          }
         </div>
       </div>
 
