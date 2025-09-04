@@ -21,6 +21,9 @@ export async function GET(request: NextRequest) {
     let startDate: Date;
 
     switch (period) {
+      case '24h':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
       case '7d':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
