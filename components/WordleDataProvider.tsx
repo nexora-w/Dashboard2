@@ -49,11 +49,16 @@ export function WordleDataProvider({ children }: WordleDataProviderProps) {
   const [error, setError] = useState<string | null>(null)
   const { data: session } = useSession()
 
-  const fetchAnswers = async () => {
+  const fetchAnswers = async (showLoading = true) => {
     try {
+      if (showLoading) {
+        setLoading(true)
+      }
+      console.log('Fetching answers...')
       const response = await fetch("/api/cs2dle/games/answers?gameType=Wordle")
       if (response.ok) {
         const data = await response.json()
+        console.log('Fetched answers:', data.answers)
         setAnswers(data.answers || [])
       } else {
         throw new Error('Failed to fetch answers')
@@ -61,6 +66,10 @@ export function WordleDataProvider({ children }: WordleDataProviderProps) {
     } catch (err) {
       console.error('Error fetching answers:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch answers')
+    } finally {
+      if (showLoading) {
+        setLoading(false)
+      }
     }
   }
 
@@ -80,7 +89,7 @@ export function WordleDataProvider({ children }: WordleDataProviderProps) {
   }
 
   const refreshAnswers = async () => {
-    await fetchAnswers()
+    await fetchAnswers(false)
   }
 
   const refreshWords = async () => {

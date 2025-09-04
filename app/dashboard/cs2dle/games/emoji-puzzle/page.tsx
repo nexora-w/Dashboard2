@@ -117,29 +117,34 @@ const EmojiPuzzle = () => {
   const [createEmojiPickerOpen, setCreateEmojiPickerOpen] = useState<number | null>(null);
   const [editEmojiPickerOpen, setEditEmojiPickerOpen] = useState<number | null>(null);
 
-  useEffect(() => {
-    const fetchAnswers = async () => {
-      try {
+  const fetchAnswers = async (showLoading = true) => {
+    try {
+      if (showLoading) {
         setLoading(true);
-        const response = await fetch(
-          "/api/cs2dle/games/answers?gameType=EmojiPuzzle"
-        );
+      }
+      console.log('Fetching emoji puzzle answers...');
+      const response = await fetch(
+        "/api/cs2dle/games/answers?gameType=EmojiPuzzle"
+      );
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch answers");
-        }
+      if (!response.ok) {
+        throw new Error("Failed to fetch answers");
+      }
 
-        const data = await response.json();
-        console.log(data);
+      const data = await response.json();
+      console.log('Fetched emoji puzzle answers:', data.answers);
 
-        setAnswers(data.answers || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
+      setAnswers(data.answers || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      if (showLoading) {
         setLoading(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchAnswers();
   }, []);
 
@@ -311,13 +316,7 @@ const EmojiPuzzle = () => {
       }
 
       // Refresh the answers list
-      const refreshResponse = await fetch(
-        "/api/cs2dle/games/answers?gameType=EmojiPuzzle"
-      );
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json();
-        setAnswers(data.answers || []);
-      }
+      await fetchAnswers(false);
 
       setEditingSkin(null);
       setEditForm({});
@@ -379,8 +378,8 @@ const EmojiPuzzle = () => {
         throw new Error("Failed to delete answer");
       }
 
-      // Remove the answer from the local state
-      setAnswers((prev) => prev.filter((answer) => answer._id !== answerId));
+      // Refresh the answers list
+      await fetchAnswers(false);
 
       toast({
         title: "Success",
@@ -674,13 +673,7 @@ const EmojiPuzzle = () => {
       }
 
       // Refresh the answers list
-      const refreshResponse = await fetch(
-        "/api/cs2dle/games/answers?gameType=EmojiPuzzle"
-      );
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json();
-        setAnswers(data.answers || []);
-      }
+      await fetchAnswers(false);
 
       // Reset form
       setSelectedDate(undefined);

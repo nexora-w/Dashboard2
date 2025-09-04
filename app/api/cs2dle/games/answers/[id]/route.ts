@@ -52,17 +52,25 @@ export async function PUT(
     const client = await clientPromise;
     const db = client.db();
 
-    // Check if another answer exists for the new date (if date is being changed)
+    // Check if another answer exists for the new date (only if date is being changed)
     if (data.date) {
-      const existingAnswer = await db.collection('gameanswers').findOne({
-        date: data.date,
-        _id: { $ne: new ObjectId(id) }
+      // First, get the current answer to check if the date is actually changing
+      const currentAnswer = await db.collection('gameanswers').findOne({
+        _id: new ObjectId(id)
       });
-      if (existingAnswer) {
-        return NextResponse.json(
-          { error: 'An answer already exists for this date' },
-          { status: 400 }
-        );
+      
+      // Only check for conflicts if the date is actually being changed
+      if (currentAnswer && currentAnswer.date !== data.date) {
+        const existingAnswer = await db.collection('gameanswers').findOne({
+          date: data.date,
+          _id: { $ne: new ObjectId(id) }
+        });
+        if (existingAnswer) {
+          return NextResponse.json(
+            { error: 'An answer already exists for this date' },
+            { status: 400 }
+          );
+        }
       }
     }
 
