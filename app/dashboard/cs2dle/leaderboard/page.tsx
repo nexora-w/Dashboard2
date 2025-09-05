@@ -91,6 +91,22 @@ const LeaderboardPage = () => {
     {}
   );
 
+  // Initialize selectedPrizes when data changes
+  useEffect(() => {
+    if (data?.data) {
+      const initialSelections: Record<string, string> = {};
+      data.data.forEach((entry) => {
+        if (entry.allPrizes && entry.allPrizes.length > 0) {
+          const showPrizeIndex = entry.allPrizes.findIndex(prize => prize.isShow === true);
+          if (showPrizeIndex !== -1) {
+            initialSelections[entry.user._id] = showPrizeIndex.toString();
+          }
+        }
+      });
+      setSelectedPrizes(initialSelections);
+    }
+  }, [data]);
+
   const fetchLeaderboard = async (page: number) => {
     try {
       setLoading(true);
@@ -184,7 +200,19 @@ const LeaderboardPage = () => {
       };
     }
 
-    // If no prize has isShow: true, fall back to the first available prize
+    // If no prize has isShow: true, check if we have a selected prize in state
+    const selectedPrizeIndex = selectedPrizes[entry.user._id];
+    if (selectedPrizeIndex && entry.allPrizes) {
+      const selectedPrize = entry.allPrizes[parseInt(selectedPrizeIndex)];
+      if (selectedPrize) {
+        return {
+          name: selectedPrize.name,
+          image: selectedPrize.image,
+        };
+      }
+    }
+
+    // If no prize has isShow: true and no selection, fall back to the first available prize
     const firstPrize = entry.allPrizes?.[0];
     if (firstPrize) {
       return {
@@ -309,97 +337,95 @@ const LeaderboardPage = () => {
                         {entry.allPrizes && entry.allPrizes.length > 0 ? (
                           <div className="flex flex-col items-center gap-2">
                             <div className="flex flex-col items-center gap-1">
-                              {entry.allPrizes && entry.allPrizes.length > 1 && (
-                                <div className="flex items-center gap-1">
-                                  <Select
-                                    value={selectedPrizes[entry.user._id] || ""}
-                                    onValueChange={(value) =>
-                                      handlePrizeChange(entry.user._id, value)
-                                    }
-                                  >
-                                    <SelectTrigger className="w-full py-3 text-xs">
-                                      <div className="flex items-center gap-2">
-                                        {getDisplayPrize(entry) ? (
-                                          <>
-                                            <Image
-                                              src={getDisplayPrize(entry)?.image || "/placeholder.jpg"}
-                                              alt={getDisplayPrize(entry)?.name || "Unknown"}
-                                              width={50}
-                                              height={50}
-                                              className="rounded-none object-cover"
-                                              onError={(e) => {
-                                                const target =
-                                                  e.target as HTMLImageElement;
-                                                target.src = "/placeholder.jpg";
-                                              }}
-                                            />
-                                            <div className="flex flex-col items-start gap-1">
-                                              <span className="text-sm text-muted-foreground truncate max-w-32 text-center">
-                                                {getDisplayPrize(entry)?.name || "Unknown"}
-                                                {entry.allPrizes && entry.allPrizes.length > 1 && (
-                                                  <span className="ml-1 text-xs text-blue-500">
-                                                    ({entry.allPrizes.length})
-                                                  </span>
-                                                )}
-                                              </span>
-                                            </div>
-                                          </>
-                                        ) : (
-                                          <div className="flex items-center gap-2">
-                                            <div className="w-[50px] h-[50px] bg-muted rounded-none flex items-center justify-center">
-                                              <span className="text-xs text-muted-foreground">No Prize</span>
-                                            </div>
-                                            <div className="flex flex-col items-start gap-1">
-                                              <span className="text-sm text-muted-foreground truncate max-w-32 text-center">
-                                                Select a prize to display
-                                              </span>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {entry.allPrizes?.map((prize, index) => (
-                                        <SelectItem
-                                          key={index}
-                                          value={index.toString()}
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <Image
-                                              src={prize.image}
-                                              alt={prize.name}
-                                              width={50}
-                                              height={50}
-                                              className="rounded-none object-cover"
-                                              onError={(e) => {
-                                                const target =
-                                                  e.target as HTMLImageElement;
-                                                target.src = "/placeholder.jpg";
-                                              }}
-                                            />
-                                            <span className="truncate">
-                                              {prize.name}
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={selectedPrizes[entry.user._id] || ""}
+                                  onValueChange={(value) =>
+                                    handlePrizeChange(entry.user._id, value)
+                                  }
+                                >
+                                  <SelectTrigger className="w-full py-3 text-xs">
+                                    <div className="flex items-center gap-2">
+                                      {getDisplayPrize(entry) ? (
+                                        <>
+                                          <Image
+                                            src={getDisplayPrize(entry)?.image || "/placeholder.jpg"}
+                                            alt={getDisplayPrize(entry)?.name || "Unknown"}
+                                            width={50}
+                                            height={50}
+                                            className="rounded-none object-cover"
+                                            onError={(e) => {
+                                              const target =
+                                                e.target as HTMLImageElement;
+                                              target.src = "/placeholder.jpg";
+                                            }}
+                                          />
+                                          <div className="flex flex-col items-start gap-1">
+                                            <span className="text-sm text-muted-foreground truncate max-w-32 text-center">
+                                              {getDisplayPrize(entry)?.name || "Unknown"}
+                                              {entry.allPrizes && entry.allPrizes.length > 1 && (
+                                                <span className="ml-1 text-xs text-blue-500">
+                                                  ({entry.allPrizes.length})
+                                                </span>
+                                              )}
                                             </span>
-                                            <div className="flex items-center gap-1 ml-auto">
-                                              <Badge
-                                                variant="outline"
-                                                className="text-xs"
-                                                style={{
-                                                  borderColor:
-                                                    prize.rarity.color,
-                                                  color: prize.rarity.color,
-                                                }}
-                                              >
-                                                {prize.rarity.name}
-                                              </Badge>
-                                            </div>
                                           </div>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              )}
+                                        </>
+                                      ) : (
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-[50px] h-[50px] bg-muted rounded-none flex items-center justify-center">
+                                            <span className="text-xs text-muted-foreground">No Prize</span>
+                                          </div>
+                                          <div className="flex flex-col items-start gap-1">
+                                            <span className="text-sm text-muted-foreground truncate max-w-32 text-center">
+                                              Select a prize to display
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {entry.allPrizes?.map((prize, index) => (
+                                      <SelectItem
+                                        key={index}
+                                        value={index.toString()}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <Image
+                                            src={prize.image}
+                                            alt={prize.name}
+                                            width={50}
+                                            height={50}
+                                            className="rounded-none object-cover"
+                                            onError={(e) => {
+                                              const target =
+                                                e.target as HTMLImageElement;
+                                              target.src = "/placeholder.jpg";
+                                            }}
+                                          />
+                                          <span className="truncate">
+                                            {prize.name}
+                                          </span>
+                                          <div className="flex items-center gap-1 ml-auto">
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                              style={{
+                                                borderColor:
+                                                  prize.rarity.color,
+                                                color: prize.rarity.color,
+                                              }}
+                                            >
+                                              {prize.rarity.name}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </div>
                         ) : (
